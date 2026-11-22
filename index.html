@@ -195,6 +195,16 @@
             </button>
 
             <button
+              onclick="openSubtopicModal()"
+              id="desktop-subtopics-btn"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold transition cursor-pointer"
+              title="Sub-Topics pro Bereich erfassen & verwalten"
+            >
+              <span class="text-emerald-700 font-extrabold">▾</span>
+              <span>Sub-Topics</span>
+            </button>
+
+            <button
               onclick="openTagModal()"
               id="desktop-tags-btn"
               class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold transition cursor-pointer"
@@ -322,7 +332,7 @@
       <form id="video-form" onsubmit="saveVideo(event)" class="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
         <input type="hidden" id="edit-video-id" />
 
-        <!-- Zeile 1: Kategorie & Sub-Topic Drop-Down -->
+        <!-- Zeile 1: Kategorie & Sub-Topic Drop-Down + Schnell-Anlage -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
             <label for="input-category" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
@@ -337,9 +347,18 @@
           </div>
 
           <div>
-            <label for="input-subtopic" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Sub-Topic (Drop-Down) *
-            </label>
+            <div class="flex items-center justify-between mb-1">
+              <label for="input-subtopic" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Sub-Topic (Drop-Down) *
+              </label>
+              <button
+                type="button"
+                onclick="toggleQuickSubtopicInput()"
+                class="text-xs font-semibold text-emerald-700 hover:text-emerald-600 cursor-pointer"
+              >
+                + Neues Sub-Topic
+              </button>
+            </div>
             <select
               id="input-subtopic"
               onchange="toggleCustomSubtopicField()"
@@ -352,6 +371,21 @@
               placeholder="Eigenes Sub-Topic eingeben..."
               class="hidden mt-2 w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
             />
+            <div id="quick-subtopic-box" class="hidden mt-2 flex items-center gap-2 p-2 rounded-xl bg-emerald-50/70 border border-emerald-200">
+              <input
+                id="quick-subtopic-name"
+                type="text"
+                placeholder="Neues Sub-Topic (wird gespeichert)"
+                class="flex-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="button"
+                onclick="quickAddSubtopic()"
+                class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer"
+              >
+                Speichern
+              </button>
+            </div>
           </div>
         </div>
 
@@ -433,16 +467,16 @@
           />
         </div>
 
-        <!-- Zeile 4: Kurz-Analyse Textfeld -->
+        <!-- Zeile 4: Kurzanalyse Textfeld -->
         <div>
           <label for="input-analysis" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-            3. Kurz-Analyse *
+            3. Kurzanalyse *
           </label>
           <textarea
             id="input-analysis"
             rows="3"
             required
-            placeholder="Kurze Zusammenfassung, Schwunggedanken und Timestamps wie (00:33)..."
+            placeholder="Knackige Beschreibung (2–3 Sätze mit Time-Stamp wie 01:10)..."
             class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 leading-relaxed"
           ></textarea>
         </div>
@@ -646,6 +680,48 @@
   </div>
 
   <!-- ===================================================================== -->
+  <!-- MODAL 3A: SUB-TOPICS VERWALTEN                                        -->
+  <!-- ===================================================================== -->
+  <div id="subtopic-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-3 sm:p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h2 class="text-base sm:text-lg font-bold text-slate-900">Sub-Topics erfassen & verwalten</h2>
+        <button onclick="closeSubtopicModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <div>
+          <label for="manager-subtopic-category" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            Bereich / Topic auswählen
+          </label>
+          <select
+            id="manager-subtopic-category"
+            onchange="renderSubtopicManagerList()"
+            class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500"
+          ></select>
+        </div>
+
+        <form onsubmit="addSubtopicFromManager(event)" class="flex gap-2">
+          <input
+            id="manager-subtopic-input"
+            type="text"
+            required
+            placeholder="Neues Sub-Topic (z. B. Ballflugkontrolle)"
+            class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+          />
+          <button type="submit" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer">
+            + Hinzufügen
+          </button>
+        </form>
+
+        <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50" id="subtopic-manager-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
   <!-- MODAL 3B: TAGS SEPARAT VERWALTEN                                      -->
   <!-- ===================================================================== -->
   <div id="tag-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-3 sm:p-4">
@@ -758,10 +834,7 @@
     // - Netzmelone: #fda4af / #fb7185
     // - Silber: #cbd5e1
     // - Klee (50% Deckkraft): rgba(74, 222, 128, 0.5)
-    // - Mandarine (70% Deckkraft): rgba(251, 146, 60, 0.7)
     // =========================================================================
-    const MANDARINE_70 = 'rgba(251, 146, 60, 0.7)';
-
     const CATEGORIES = [
       {
         id: 'basics',
@@ -837,6 +910,14 @@
       }
     ];
 
+    function buildDefaultSubtopicsMap() {
+      const map = {};
+      CATEGORIES.forEach((c) => {
+        map[c.id] = [...c.subtopics];
+      });
+      return map;
+    }
+
     const DEFAULT_PRO = 'Chris Ryan Golf';
 
     const DEFAULT_PROS = [
@@ -872,7 +953,7 @@
         url: 'https://www.youtube.com/watch?v=9L4h_Z1tF4k',
         tags: ['#Alignment', '#KerrodGray'],
         analysis:
-          'Zwischenziel (Intermediate Target) suchen (01:10), Schlagfläche zuerst ausrichten, danach Stand & Schultern parallel setzen.',
+          'Kerrod Gray zeigt bei (01:10), wie du ein klares Zwischenziel (Intermediate Target) wählst. Danach richtest du zuerst die Schlagfläche exakt aus und setzt Stand sowie Schultern parallel dazu (03:15).',
         detailedAnalysis: '',
         images: []
       },
@@ -885,7 +966,7 @@
         url: 'https://www.youtube.com/watch?v=64oA-1gK7A0',
         tags: ['#Grip', '#MichaelAlexander'],
         analysis:
-          'Schläger diagonal durch die Finger der linken Hand legen, 2–2,5 Knöchel sichtbar (01:45).',
+          'Der Schläger wird diagonal durch die Finger der linken Hand gelegt, sodass bei (01:45) etwa zwei bis zweieinhalb Knöchel sichtbar sind. Das ermöglicht eine freie Handgelenksbewegung und konstanten Schlagflächenkontakt (05:20).',
         detailedAnalysis: '',
         images: []
       },
@@ -898,7 +979,7 @@
         url: 'https://www.youtube.com/watch?v=xQ4d98Z2_1U',
         tags: ['#Driver', '#Takeaway', '#DannyMaude'],
         analysis:
-          'Aufwärtstreffen beim Driver beachten (00:15); offene Schlagfläche führt zum Slice, geschlossene zum Hook.',
+          'Danny Maude betont bei (00:15) den leichten Aufwärtstreffwinkel beim Driver im Gegensatz zu den Eisen. Eine saubere Schlagflächenkontrolle im Rück- und Abschwung (04:05) verhindert Slice und Hook.',
         detailedAnalysis: '',
         images: []
       }
@@ -911,6 +992,7 @@
       VIDEOS: 'golf_master_videos_v4',
       PROS: 'golf_master_pros_v4',
       TAGS: 'golf_master_tags_v1',
+      SUBTOPICS: 'golf_master_subtopics_v1',
       VAULT: 'golf_master_vault_code'
     };
 
@@ -935,6 +1017,7 @@
       videos: [],
       pros: [],
       tags: [],
+      subtopicsByCategory: buildDefaultSubtopicsMap(),
       vaultCode: getInitialVaultCode(),
       selectedCategory: 'ALL',
       searchQuery: '',
@@ -951,6 +1034,36 @@
     let firebaseUser = null;
     let unsubscribeSnapshot = null;
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'golf-master-app';
+
+    function mergeSubtopicsMap(rawMap) {
+      const base = buildDefaultSubtopicsMap();
+      if (!rawMap || typeof rawMap !== 'object') return base;
+      CATEGORIES.forEach((cat) => {
+        if (Array.isArray(rawMap[cat.id])) {
+          const unique = [];
+          rawMap[cat.id].forEach((s) => {
+            const clean = String(s || '').trim();
+            if (clean && !unique.some((u) => u.toLowerCase() === clean.toLowerCase())) {
+              unique.push(clean);
+            }
+          });
+          base[cat.id] = unique;
+        }
+      });
+      return base;
+    }
+
+    function getSubtopicsForCategory(catId) {
+      const configured = state.subtopicsByCategory && Array.isArray(state.subtopicsByCategory[catId])
+        ? [...state.subtopicsByCategory[catId]]
+        : [];
+      state.videos.forEach((v) => {
+        if (v.categoryId === catId && v.subtopic && !configured.some((s) => s.toLowerCase() === v.subtopic.toLowerCase())) {
+          configured.push(v.subtopic);
+        }
+      });
+      return configured;
+    }
 
     function updateSyncStatus(status, label) {
       const dot = document.getElementById('sync-dot');
@@ -978,15 +1091,18 @@
         const savedVideos = localStorage.getItem(STORAGE_KEYS.VIDEOS);
         const savedPros = localStorage.getItem(STORAGE_KEYS.PROS);
         const savedTags = localStorage.getItem(STORAGE_KEYS.TAGS);
+        const savedSubtopics = localStorage.getItem(STORAGE_KEYS.SUBTOPICS);
         state.videos = savedVideos ? JSON.parse(savedVideos) : [...DEFAULT_VIDEOS];
         const parsedPros = savedPros ? JSON.parse(savedPros) : [...DEFAULT_PROS];
         if (!parsedPros.includes(DEFAULT_PRO)) parsedPros.unshift(DEFAULT_PRO);
         state.pros = parsedPros;
         state.tags = savedTags ? JSON.parse(savedTags) : [...DEFAULT_TAGS];
+        state.subtopicsByCategory = savedSubtopics ? mergeSubtopicsMap(JSON.parse(savedSubtopics)) : buildDefaultSubtopicsMap();
       } catch (e) {
         state.videos = [...DEFAULT_VIDEOS];
         state.pros = [...DEFAULT_PROS];
         state.tags = [...DEFAULT_TAGS];
+        state.subtopicsByCategory = buildDefaultSubtopicsMap();
       }
     }
 
@@ -995,6 +1111,7 @@
         localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(state.videos));
         localStorage.setItem(STORAGE_KEYS.PROS, JSON.stringify(state.pros));
         localStorage.setItem(STORAGE_KEYS.TAGS, JSON.stringify(state.tags));
+        localStorage.setItem(STORAGE_KEYS.SUBTOPICS, JSON.stringify(state.subtopicsByCategory));
       } catch (e) {
         showToast('Speicherlimit erreicht – ggf. große Bilder reduzieren.', 'error');
       }
@@ -1048,6 +1165,7 @@
             if (Array.isArray(data.videos)) state.videos = data.videos;
             if (Array.isArray(data.pros)) state.pros = data.pros;
             if (Array.isArray(data.tags)) state.tags = data.tags;
+            if (data.subtopicsByCategory) state.subtopicsByCategory = mergeSubtopicsMap(data.subtopicsByCategory);
             saveLocalFallback();
             renderAll();
             updateSyncStatus('live', 'Live synchronisiert');
@@ -1077,6 +1195,7 @@
           updatedAt: new Date().toISOString(),
           pros: state.pros,
           tags: state.tags,
+          subtopicsByCategory: state.subtopicsByCategory,
           videos: state.videos
         });
         updateSyncStatus('live', 'Live synchronisiert');
@@ -1161,7 +1280,7 @@
     function formatAnalysisText(text) {
       const safe = escapeHtml(text);
       return safe
-        .replace(/\(\d{1,2}:\d{2}\)/g, '<span class="inline-block px-1 py-0.2 rounded bg-emerald-100 text-emerald-900 font-mono text-[10px] font-semibold">$&</span>')
+        .replace(/\(\d{1,2}:\d{2}\)|\b\d{1,2}:\d{2}\b/g, '<span class="inline-block px-1 py-0.2 rounded bg-emerald-100 text-emerald-900 font-mono text-[10px] font-semibold">$&</span>')
         .replace(/\n/g, '<br />');
     }
 
@@ -1190,6 +1309,7 @@
       const dLabel = document.getElementById('desktop-readonly-label');
       const dAdd = document.getElementById('desktop-add-btn');
       const dPros = document.getElementById('desktop-pros-btn');
+      const dSubs = document.getElementById('desktop-subtopics-btn');
       const dTags = document.getElementById('desktop-tags-btn');
 
       const mIcon = document.getElementById('mobile-readonly-icon');
@@ -1203,6 +1323,7 @@
         dBtn.classList.add('border-amber-300', 'bg-amber-50', 'text-amber-900');
         dAdd.classList.add('hidden');
         dPros.classList.add('hidden');
+        dSubs.classList.add('hidden');
         dTags.classList.add('hidden');
 
         mIcon.textContent = '👁️';
@@ -1215,6 +1336,7 @@
         dBtn.classList.remove('border-amber-300', 'bg-amber-50', 'text-amber-900');
         dAdd.classList.remove('hidden');
         dPros.classList.remove('hidden');
+        dSubs.classList.remove('hidden');
         dTags.classList.remove('hidden');
 
         mIcon.textContent = '✏️';
@@ -1460,11 +1582,13 @@
         const addBtnHtml = state.readOnlyMode
           ? ''
           : `<button
+              type="button"
               onclick="openVideoModal('${cat.id}')"
-              style="background-color: ${MANDARINE_70};"
-              class="text-[11px] font-bold text-slate-950 hover:brightness-95 px-2.5 py-1.5 rounded-lg border border-orange-500/35 shadow-2xs transition cursor-pointer"
+              title="Video zu ${escapeHtml(cat.name)} hinzufügen"
+              aria-label="Video zu ${escapeHtml(cat.name)} hinzufügen"
+              class="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm inline-flex items-center justify-center transition cursor-pointer"
             >
-              + Video zu ${escapeHtml(cat.name)}
+              <svg class="w-4 h-4 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             </button>`;
 
         sectionsHtml += `
@@ -1680,8 +1804,8 @@
             </div>
           </div>
 
-          <!-- Kompakte Kurz-Analyse -->
-          <div class="px-2.5 pt-1.5 pb-2.5 mt-1.5 border-t border-slate-100 max-h-20 overflow-y-auto">
+          <!-- Kompakte Kurzanalyse -->
+          <div class="px-2.5 pt-1.5 pb-2.5 mt-1.5 border-t border-slate-100 max-h-24 overflow-y-auto">
             <div class="text-[11px] text-slate-700 leading-snug">
               ${formatAnalysisText(video.analysis)}
             </div>
@@ -1702,10 +1826,9 @@
 
     window.populateSubtopicSelect = function (selectedSubtopic = '') {
       const catId = document.getElementById('input-category').value;
-      const cat = CATEGORIES.find((c) => c.id === catId);
       const select = document.getElementById('input-subtopic');
       const customInput = document.getElementById('input-subtopic-custom');
-      const baseSubs = cat ? [...cat.subtopics] : [];
+      const baseSubs = getSubtopicsForCategory(catId);
 
       if (selectedSubtopic && !baseSubs.includes(selectedSubtopic)) {
         baseSubs.push(selectedSubtopic);
@@ -1734,6 +1857,34 @@
         customInput.required = false;
         customInput.value = '';
       }
+    };
+
+    window.toggleQuickSubtopicInput = function () {
+      const box = document.getElementById('quick-subtopic-box');
+      box.classList.toggle('hidden');
+      if (!box.classList.contains('hidden')) {
+        document.getElementById('quick-subtopic-name').focus();
+      }
+    };
+
+    window.quickAddSubtopic = async function () {
+      const catId = document.getElementById('input-category').value;
+      const input = document.getElementById('quick-subtopic-name');
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (!Array.isArray(state.subtopicsByCategory[catId])) {
+        state.subtopicsByCategory[catId] = [];
+      }
+      if (!state.subtopicsByCategory[catId].some((s) => s.toLowerCase() === name.toLowerCase())) {
+        state.subtopicsByCategory[catId].push(name);
+        await pushStateToCloud();
+      }
+
+      populateSubtopicSelect(name);
+      input.value = '';
+      document.getElementById('quick-subtopic-box').classList.add('hidden');
+      showToast(`Sub-Topic „${name}“ gespeichert.`);
     };
 
     function populateProSelect(selectedPro = DEFAULT_PRO) {
@@ -1912,14 +2063,15 @@
     }
 
     function renderSuggestedTags() {
-      const allTags = new Set([...DEFAULT_TAGS, ...state.tags]);
-      state.videos.forEach((v) => (v.tags || []).forEach((t) => allTags.add(t)));
-
+      const sortedTags = [...state.tags].sort((a, b) => a.localeCompare(b, 'de'));
       const container = document.getElementById('suggested-tags-container');
-      const sample = Array.from(allTags).slice(0, 10);
+      if (sortedTags.length === 0) {
+        container.innerHTML = `<span class="text-[11px] text-slate-400">Keine Tags unter „Tags“ erfasst.</span>`;
+        return;
+      }
       container.innerHTML =
         `<span class="text-[11px] text-slate-400">Vorschläge:</span>` +
-        sample
+        sortedTags
           .map(
             (t) =>
               `<button type="button" onclick="addSuggestedTag('${escapeHtml(t)}')" class="text-[11px] px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer">${escapeHtml(t)}</button>`
@@ -1933,6 +2085,7 @@
       document.getElementById('video-form').reset();
       document.getElementById('yt-preview-box').classList.add('hidden');
       document.getElementById('quick-pro-box').classList.add('hidden');
+      document.getElementById('quick-subtopic-box').classList.add('hidden');
 
       populateCategorySelect();
       if (preselectedCategoryId) {
@@ -1961,6 +2114,7 @@
       document.getElementById('edit-video-id').value = video.id;
       document.getElementById('video-modal-title').textContent = 'Video-Analyse bearbeiten';
       document.getElementById('quick-pro-box').classList.add('hidden');
+      document.getElementById('quick-subtopic-box').classList.add('hidden');
 
       populateCategorySelect();
       document.getElementById('input-category').value = video.categoryId;
@@ -2009,6 +2163,11 @@
       const subtopicSelectVal = document.getElementById('input-subtopic').value;
       const subtopicCustomVal = document.getElementById('input-subtopic-custom').value.trim();
       const subtopic = subtopicSelectVal === '__CUSTOM__' ? subtopicCustomVal : subtopicSelectVal;
+      if (subtopic && Array.isArray(state.subtopicsByCategory[categoryId])) {
+        if (!state.subtopicsByCategory[categoryId].some((s) => s.toLowerCase() === subtopic.toLowerCase())) {
+          state.subtopicsByCategory[categoryId].push(subtopic);
+        }
+      }
       const pro = document.getElementById('input-pro').value;
       const url = document.getElementById('input-url').value.trim();
       const title = document.getElementById('input-title').value.trim();
@@ -2140,8 +2299,95 @@
     };
 
     // =========================================================================
-    // 9. PRO-MANAGER & TAG-MANAGER MODALS
+    // 9. PRO-MANAGER, SUBTOPIC-MANAGER & TAG-MANAGER MODALS
     // =========================================================================
+    window.openSubtopicModal = function () {
+      const select = document.getElementById('manager-subtopic-category');
+      select.innerHTML = CATEGORIES.map(
+        (c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`
+      ).join('');
+      if (state.selectedCategory !== 'ALL') {
+        select.value = state.selectedCategory;
+      }
+      renderSubtopicManagerList();
+      const modal = document.getElementById('subtopic-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      document.getElementById('manager-subtopic-input').focus();
+    };
+
+    window.closeSubtopicModal = function () {
+      const modal = document.getElementById('subtopic-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.renderSubtopicManagerList = function () {
+      const catId = document.getElementById('manager-subtopic-category').value;
+      const container = document.getElementById('subtopic-manager-list');
+      const subs = getSubtopicsForCategory(catId);
+
+      if (subs.length === 0) {
+        container.innerHTML = `<div class="px-3.5 py-3 text-xs text-slate-500">Noch keine Sub-Topics für diesen Bereich erfasst.</div>`;
+        return;
+      }
+
+      container.innerHTML = subs
+        .map((sub) => {
+          const count = state.videos.filter(
+            (v) => v.categoryId === catId && (v.subtopic || '').toLowerCase() === sub.toLowerCase()
+          ).length;
+          return `
+            <div class="px-3.5 py-2 flex items-center justify-between text-xs sm:text-sm">
+              <div>
+                <span class="font-semibold text-slate-900">${escapeHtml(sub)}</span>
+                <span class="ml-2 text-xs text-slate-500">(${count} ${count === 1 ? 'Video' : 'Videos'})</span>
+              </div>
+              <button
+                onclick="deleteSubtopic('${catId}', '${escapeHtml(sub)}')"
+                class="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
+                title="Sub-Topic entfernen"
+              >
+                Entfernen
+              </button>
+            </div>
+          `;
+        })
+        .join('');
+    };
+
+    window.addSubtopicFromManager = async function (e) {
+      e.preventDefault();
+      const catId = document.getElementById('manager-subtopic-category').value;
+      const input = document.getElementById('manager-subtopic-input');
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (!Array.isArray(state.subtopicsByCategory[catId])) {
+        state.subtopicsByCategory[catId] = [];
+      }
+      if (state.subtopicsByCategory[catId].some((s) => s.toLowerCase() === name.toLowerCase())) {
+        showToast('Dieses Sub-Topic existiert in diesem Bereich bereits.', 'error');
+        return;
+      }
+
+      state.subtopicsByCategory[catId].push(name);
+      input.value = '';
+      renderSubtopicManagerList();
+      showToast(`Sub-Topic „${name}“ gespeichert.`);
+      await pushStateToCloud();
+    };
+
+    window.deleteSubtopic = async function (catId, subName) {
+      if (!Array.isArray(state.subtopicsByCategory[catId])) return;
+      state.subtopicsByCategory[catId] = state.subtopicsByCategory[catId].filter(
+        (s) => s.toLowerCase() !== subName.toLowerCase()
+      );
+      renderSubtopicManagerList();
+      showToast(`Sub-Topic „${subName}“ entfernt.`);
+      await pushStateToCloud();
+    };
+
     window.openProModal = function () {
       renderProManagerList();
       const modal = document.getElementById('pro-modal');
@@ -2270,6 +2516,7 @@
       input.value = '';
       renderTagManagerList();
       renderQuickChipsBar();
+      renderSuggestedTags();
       showToast(`Tag „${formatted}“ gespeichert.`);
       await pushStateToCloud();
     };
@@ -2281,6 +2528,7 @@
       }
       renderTagManagerList();
       renderQuickChipsBar();
+      renderSuggestedTags();
       renderBoard();
       showToast(`Tag „${tagName}“ entfernt.`);
       await pushStateToCloud();
@@ -2326,6 +2574,7 @@
         exportedAt: new Date().toISOString(),
         pros: state.pros,
         tags: state.tags,
+        subtopicsByCategory: state.subtopicsByCategory,
         videos: state.videos
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -2353,6 +2602,9 @@
             }
             if (Array.isArray(parsed.tags)) {
               state.tags = parsed.tags;
+            }
+            if (parsed.subtopicsByCategory) {
+              state.subtopicsByCategory = mergeSubtopicsMap(parsed.subtopicsByCategory);
             }
             renderAll();
             await pushStateToCloud();
