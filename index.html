@@ -1,0 +1,2225 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GOLF MASTER – Video & Schwung-Analyse</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    /* Heller Hintergrund mit dezentem Punktgitter */
+    body {
+      background-color: #f4f6f8;
+      background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: #0f172a;
+    }
+
+    /* Schöne Scrollbars */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #eef2f6;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .slide-track {
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      cursor: grab;
+    }
+    .slide-track:active {
+      cursor: grabbing;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-emerald-500/20 selection:text-emerald-900">
+
+  <!-- Toast-Benachrichtigung -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Top Navigation & Kontrollzentrum -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5">
+        
+        <!-- Logo, Zähler & Live-Sync-Status -->
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center shadow-sm border border-emerald-500/20 shrink-0">
+              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 18V3l7 4-7 4" />
+                <circle cx="12" cy="18" r="3" />
+                <path d="M5 21h14" />
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-slate-900">GOLF MASTER</h1>
+                <span id="video-count-badge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                  0 Videos
+                </span>
+                <!-- Sync Status Pill -->
+                <button
+                  onclick="openSyncModal()"
+                  id="sync-status-btn"
+                  title="Cloud-Sync, iCloud-Import & iPhone-Link verwalten"
+                  class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200/70 transition cursor-pointer"
+                >
+                  <span id="sync-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                  <span id="sync-status-text">Lokal gespeichert</span>
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-500 hidden sm:block">Dein persönliches Schwung- & Video-Board (Mac ↔ iPhone Sync)</p>
+            </div>
+          </div>
+
+          <!-- Mobile Controls (Lesemodus Toggle, Sync/Import & Neu) -->
+          <div class="flex lg:hidden items-center gap-1.5 shrink-0">
+            <button
+              onclick="toggleReadOnlyMode()"
+              id="mobile-readonly-btn"
+              title="Zwischen Lesemodus und Bearbeiten wechseln"
+              class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span id="mobile-readonly-icon">👁️</span>
+              <span id="mobile-readonly-label">Lesemodus</span>
+            </button>
+
+            <button
+              onclick="openSyncModal()"
+              id="mobile-sync-btn"
+              title="Sync & JSON Import/Export"
+              aria-label="Sync und JSON Import"
+              class="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-xs font-semibold text-emerald-800 flex items-center gap-1 transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              <span>Sync</span>
+            </button>
+
+            <button
+              onclick="openVideoModal()"
+              id="mobile-add-btn"
+              class="hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              <span>Neu</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Suchfeld & Desktop Aktionen -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 lg:max-w-3xl lg:justify-end">
+          
+          <!-- Live Suchfeld -->
+          <div class="relative flex-1 max-w-md">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.3-4.3"/>
+            </svg>
+            <input
+              id="search-input"
+              type="text"
+              placeholder="Suche nach Pro, #Tag, Schwungphase oder Analyse..."
+              class="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+            />
+            <button
+              id="clear-search-btn"
+              onclick="clearSearch()"
+              title="Suche löschen"
+              class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <!-- Desktop Action Buttons -->
+          <div class="hidden lg:flex items-center gap-1.5">
+            <!-- Lesemodus / Bearbeiten Toggle -->
+            <button
+              onclick="toggleReadOnlyMode()"
+              id="desktop-readonly-btn"
+              title="Zwischen Bearbeiten-Modus (Mac) und Lesemodus (iPhone) wechseln"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 transition cursor-pointer"
+            >
+              <span id="desktop-readonly-icon">✏️</span>
+              <span id="desktop-readonly-label">Bearbeiten</span>
+            </button>
+
+            <button
+              onclick="openVideoModal()"
+              id="desktop-add-btn"
+              class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            >
+              <span>Neues Video</span>
+            </button>
+
+            <button
+              onclick="openProModal()"
+              id="desktop-pros-btn"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold transition cursor-pointer"
+              title="Pros im Dropdown verwalten"
+            >
+              <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>Pros</span>
+            </button>
+
+            <button
+              onclick="openTagModal()"
+              id="desktop-tags-btn"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold transition cursor-pointer"
+              title="Tags separat erfassen & verwalten"
+            >
+              <span class="text-indigo-600 font-extrabold">#</span>
+              <span>Tags</span>
+            </button>
+
+            <button
+              onclick="openSyncModal()"
+              title="Sync-Tresor & JSON Backup"
+              class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slidable Topic-Filterleiste -->
+      <div class="mt-2.5 pt-2.5 border-t border-slate-200/80 flex items-center gap-1.5">
+        <button
+          type="button"
+          onclick="slideContainer('category-filter-bar', -260)"
+          title="Nach links sliden"
+          aria-label="Topics nach links sliden"
+          class="hidden sm:inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 shrink-0 cursor-pointer"
+        >
+          ‹
+        </button>
+        <div
+          id="category-filter-bar"
+          class="slide-track flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5"
+        ></div>
+        <button
+          type="button"
+          onclick="slideContainer('category-filter-bar', 260)"
+          title="Nach rechts sliden"
+          aria-label="Topics nach rechts sliden"
+          class="hidden sm:inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 shrink-0 cursor-pointer"
+        >
+          ›
+        </button>
+      </div>
+
+      <!-- Slidable Schnellfilter-Chips für Pros & Tags -->
+      <div class="mt-2 flex items-center gap-1.5">
+        <button
+          type="button"
+          onclick="slideContainer('quick-chips-bar', -240)"
+          title="Schnellfilter nach links sliden"
+          aria-label="Schnellfilter nach links sliden"
+          class="hidden sm:inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs shrink-0 cursor-pointer"
+        >
+          ‹
+        </button>
+        <div
+          id="quick-chips-bar"
+          class="slide-track flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5"
+        ></div>
+        <button
+          type="button"
+          onclick="slideContainer('quick-chips-bar', 240)"
+          title="Schnellfilter nach rechts sliden"
+          aria-label="Schnellfilter nach rechts sliden"
+          class="hidden sm:inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs shrink-0 cursor-pointer"
+        >
+          ›
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hauptbereich: Aktive Filter & Board-Karten -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-5">
+    
+    <!-- Aktive Filteranzeige -->
+    <div id="active-filters-bar" class="hidden mb-4 flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 shadow-xs">
+      <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+        <span class="text-slate-500 font-medium">Aktive Filter:</span>
+        <div id="active-filter-pills" class="flex flex-wrap items-center gap-1.5"></div>
+      </div>
+      <button onclick="resetAllFilters()" class="text-xs font-semibold text-emerald-700 hover:text-emerald-600 underline cursor-pointer">
+        Alle Filter zurücksetzen
+      </button>
+    </div>
+
+    <!-- Container für die Kategorien & Video-Karten -->
+    <div id="board-content" class="space-y-6"></div>
+
+    <!-- Leerzustand bei keinen Suchtreffern -->
+    <div id="empty-state" class="hidden text-center py-12 px-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+      <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.3-4.3"/></svg>
+      </div>
+      <h3 class="text-base font-bold text-slate-900 mb-1">Keine passenden Einträge gefunden</h3>
+      <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-4">
+        Für deine aktuelle Suche oder Filterauswahl gibt es noch kein Video. Passe die Suche an oder füge ein neues Video hinzu.
+      </p>
+      <div class="flex items-center justify-center gap-2.5">
+        <button onclick="resetAllFilters()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-800 transition cursor-pointer">
+          Filter zurücksetzen
+        </button>
+        <button id="empty-add-btn" onclick="openVideoModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer">
+          + Neues Video anlegen
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: VIDEO HINZUFÜGEN / BEARBEITEN                                -->
+  <!-- ===================================================================== -->
+  <div id="video-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto">
+      
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h2 id="video-modal-title" class="text-base sm:text-lg font-bold text-slate-900">Neues Video anlegen</h2>
+        <button onclick="closeVideoModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form id="video-form" onsubmit="saveVideo(event)" class="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
+        <input type="hidden" id="edit-video-id" />
+
+        <!-- Zeile 1: Kategorie & Sub-Topic Drop-Down -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="input-category" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              Bereich / Topic *
+            </label>
+            <select
+              id="input-category"
+              onchange="populateSubtopicSelect()"
+              required
+              class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500"
+            ></select>
+          </div>
+
+          <div>
+            <label for="input-subtopic" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              Sub-Topic (Drop-Down) *
+            </label>
+            <select
+              id="input-subtopic"
+              onchange="toggleCustomSubtopicField()"
+              required
+              class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500"
+            ></select>
+            <input
+              id="input-subtopic-custom"
+              type="text"
+              placeholder="Eigenes Sub-Topic eingeben..."
+              class="hidden mt-2 w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        <!-- Zeile 2: Pro Drop-Down + Inline Schnell-Anlage -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label for="input-pro" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              1. Golf-Pro auswählen *
+            </label>
+            <button
+              type="button"
+              onclick="toggleQuickProInput()"
+              class="text-xs font-semibold text-emerald-700 hover:text-emerald-600 cursor-pointer"
+            >
+              + Neuen Pro anlegen
+            </button>
+          </div>
+
+          <select
+            id="input-pro"
+            required
+            class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500"
+          ></select>
+
+          <div id="quick-pro-box" class="hidden mt-2 flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
+            <input
+              id="quick-pro-name"
+              type="text"
+              placeholder="Name des Pros (z. B. Tommy Fleetwood)"
+              class="flex-1 px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+            />
+            <button
+              type="button"
+              onclick="quickAddPro()"
+              class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer"
+            >
+              Übernehmen
+            </button>
+          </div>
+        </div>
+
+        <!-- Zeile 3: YouTube Hyperlink + Live Thumbnail-Vorschau -->
+        <div>
+          <label for="input-url" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            2. YouTube-Hyperlink zum Video *
+          </label>
+          <input
+            id="input-url"
+            type="url"
+            oninput="previewYoutubeUrl()"
+            placeholder="https://www.youtube.com/watch?v=... oder https://youtu.be/..."
+            required
+            class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+          />
+
+          <div id="yt-preview-box" class="hidden mt-2 flex items-center gap-3 p-2 rounded-xl bg-slate-50 border border-slate-200">
+            <img id="yt-preview-img" src="" alt="YouTube Vorschau" class="w-20 h-12 object-cover rounded-lg border border-slate-200" />
+            <div class="text-xs text-slate-700">
+              <span class="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                YouTube-Video erkannt
+              </span>
+              <p class="text-slate-500 mt-0.5">Vorschaubild wird automatisch geladen.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video Titel (Mussfeld) -->
+        <div>
+          <label for="input-title" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            Video-Titel *
+          </label>
+          <input
+            id="input-title"
+            type="text"
+            required
+            placeholder="z. B. Driver Swing Fundamentals"
+            class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+          />
+        </div>
+
+        <!-- Zeile 4: Kurz-Analyse Textfeld -->
+        <div>
+          <label for="input-analysis" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            3. Kurz-Analyse *
+          </label>
+          <textarea
+            id="input-analysis"
+            rows="3"
+            required
+            placeholder="Kurze Zusammenfassung, Schwunggedanken und Timestamps wie (00:33)..."
+            class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 leading-relaxed"
+          ></textarea>
+        </div>
+
+        <!-- Zeile 4b: Ausführliche Analyse -->
+        <div>
+          <label for="input-detailed-analysis" class="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">
+            Ausführliche Analyse
+          </label>
+          <textarea
+            id="input-detailed-analysis"
+            rows="4"
+            placeholder="Detaillierte Notizen, Drills, Bewegungsabläufe oder Schritt-für-Schritt-Punkte..."
+            class="w-full px-3 py-2 rounded-xl bg-emerald-50/40 border border-emerald-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 leading-relaxed"
+          ></textarea>
+        </div>
+
+        <!-- Zeile 4c: Bilder-Upload (Thumbnails auf der Karte, Großansicht bei Klick) -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label for="input-images" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              Bilder hochladen (Thumbnails auf der Karte)
+            </label>
+            <span class="text-[11px] text-slate-500">Klick auf Bild = Großansicht</span>
+          </div>
+          <label
+            for="input-images"
+            class="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 text-xs font-semibold text-slate-700 cursor-pointer transition"
+          >
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span>Bilder auswählen (JPG, PNG, WEBP)</span>
+            <input
+              id="input-images"
+              type="file"
+              accept="image/*"
+              multiple
+              onchange="handleImageUpload(event)"
+              class="hidden"
+            />
+          </label>
+          <div id="modal-images-list" class="mt-2.5 flex flex-wrap gap-2 empty:hidden"></div>
+        </div>
+
+        <!-- Zeile 5: Tags Eingabe -->
+        <div>
+          <label for="input-tag-field" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            4. Tags zum Video (Komma oder Enter zum Hinzufügen)
+          </label>
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-300 focus-within:bg-white focus-within:border-emerald-500">
+            <div id="modal-tags-list" class="flex flex-wrap gap-1.5 mb-1.5 empty:hidden"></div>
+            <input
+              id="input-tag-field"
+              type="text"
+              onkeydown="handleTagKeydown(event)"
+              placeholder="z. B. Driver, Takeaway, Impact..."
+              class="w-full bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
+            />
+          </div>
+          <div class="mt-1.5 flex flex-wrap items-center gap-1.5" id="suggested-tags-container"></div>
+        </div>
+
+        <!-- Formular Buttons -->
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+          <button
+            type="button"
+            onclick="closeVideoModal()"
+            class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-700 transition cursor-pointer"
+          >
+            Abbrechen
+          </button>
+          <button
+            type="submit"
+            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white shadow-sm transition cursor-pointer"
+          >
+            Speichern
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: SYNC-TRESOR & BACKUP EINSTELLUNGEN                           -->
+  <!-- ===================================================================== -->
+  <div id="sync-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-auto">
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900">Sync & JSON Backup</h2>
+        </div>
+        <button onclick="closeSyncModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed">
+          <strong>Sync & iCloud-Backup:</strong> Exportiere am Mac deine Daten als <strong>.json</strong> in <strong>iCloud Drive</strong> und lade sie auf dem iPhone über <strong>JSON Importieren</strong> ein.
+        </div>
+
+        <!-- Tresor-Code Eingabe -->
+        <div>
+          <label for="vault-code-input" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            Persönlicher Sync-Tresor-Code
+          </label>
+          <form onsubmit="changeVaultCode(event)" class="flex gap-2">
+            <input
+              id="vault-code-input"
+              type="text"
+              required
+              minlength="4"
+              placeholder="z. B. golf-master-2026"
+              class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm font-mono text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500"
+            />
+            <button
+              type="submit"
+              class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer"
+            >
+              Verbinden
+            </button>
+          </form>
+        </div>
+
+        <!-- Direktlink für iPhone kopieren -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            Direkt-URL für dein iPhone
+          </label>
+          <div class="flex gap-2">
+            <input
+              id="iphone-share-url"
+              type="text"
+              readonly
+              class="flex-1 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700 focus:outline-none"
+            />
+            <button
+              type="button"
+              onclick="copyShareUrl()"
+              class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-xs font-semibold text-slate-800 transition cursor-pointer shrink-0"
+            >
+              Link kopieren
+            </button>
+          </div>
+        </div>
+
+        <!-- Manuelles JSON Backup -->
+        <div class="pt-3 border-t border-slate-200">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">JSON Backup (iCloud Drive / Lokal)</p>
+          <div class="flex items-center gap-2.5">
+            <button
+              type="button"
+              onclick="exportData()"
+              class="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span>JSON Exportieren</span>
+            </button>
+            <label
+              class="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+              <span>JSON Importieren</span>
+              <input type="file" id="import-file-input" accept=".json,application/json,text/plain,*/*" class="hidden" onchange="importData(event)" />
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3: PROS VERWALTEN                                               -->
+  <!-- ===================================================================== -->
+  <div id="pro-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-3 sm:p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h2 class="text-base sm:text-lg font-bold text-slate-900">Golf-Pros verwalten</h2>
+        <button onclick="closeProModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <form onsubmit="addProFromManager(event)" class="flex gap-2">
+          <input
+            id="manager-pro-input"
+            type="text"
+            required
+            placeholder="Neuer Pro-Name (z. B. Pete Cowen)"
+            class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+          />
+          <button type="submit" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer">
+            + Hinzufügen
+          </button>
+        </form>
+
+        <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50" id="pro-manager-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3B: TAGS SEPARAT VERWALTEN                                      -->
+  <!-- ===================================================================== -->
+  <div id="tag-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-3 sm:p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h2 class="text-base sm:text-lg font-bold text-slate-900">Tags erfassen & verwalten</h2>
+        <button onclick="closeTagModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <form onsubmit="addTagFromManager(event)" class="flex gap-2">
+          <input
+            id="manager-tag-input"
+            type="text"
+            required
+            placeholder="Neuer Tag (z. B. Rotation oder Bunkerschlag)"
+            class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500"
+          />
+          <button type="submit" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer">
+            + Hinzufügen
+          </button>
+        </form>
+
+        <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50" id="tag-manager-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 4: VIDEO PLAYER PREVIEW                                         -->
+  <!-- ===================================================================== -->
+  <div id="player-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/75 backdrop-blur-xs p-3 sm:p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="min-w-0 pr-3">
+          <p id="player-modal-pro" class="text-xs font-semibold text-emerald-700"></p>
+          <h3 id="player-modal-title" class="text-sm font-bold text-slate-900 truncate"></h3>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a id="player-external-link" href="#" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-semibold text-slate-800 transition">
+            YouTube ↗
+          </a>
+          <button onclick="closePlayerModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="aspect-video w-full bg-black">
+        <iframe
+          id="player-iframe"
+          class="w-full h-full"
+          src=""
+          title="YouTube Video Player"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 5: LÖSCHBESTÄTIGUNG                                             -->
+  <!-- ===================================================================== -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-5 shadow-2xl">
+      <h3 class="text-base font-bold text-slate-900 mb-1.5">Eintrag wirklich löschen?</h3>
+      <p id="confirm-modal-text" class="text-xs sm:text-sm text-slate-600 mb-4">Dieser Vorgang kann nicht rückgängig gemacht werden.</p>
+      <div class="flex justify-end gap-2">
+        <button onclick="closeConfirmModal()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-800 cursor-pointer">
+          Abbrechen
+        </button>
+        <button id="confirm-delete-btn" class="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs sm:text-sm font-semibold text-white cursor-pointer">
+          Löschen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 6: BILD-GROSSANSICHT (LIGHTBOX)                                 -->
+  <!-- ===================================================================== -->
+  <div id="image-lightbox-modal" onclick="closeImageLightbox()" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-xs p-3 sm:p-6">
+    <div onclick="event.stopPropagation()" class="bg-white border border-slate-200 rounded-2xl max-w-4xl w-full max-h-[90vh] shadow-2xl overflow-hidden flex flex-col">
+      <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <span id="lightbox-caption" class="text-xs sm:text-sm font-bold text-slate-900 truncate pr-3">Bildansicht</span>
+        <button onclick="closeImageLightbox()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-3 sm:p-4 bg-slate-900/5 flex-1 overflow-auto flex items-center justify-center">
+        <img id="lightbox-img" src="" alt="Vergrößertes Bild" class="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-md" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- FIREBASE + APPLICATION LOGIC                                          -->
+  <!-- ===================================================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // =========================================================================
+    // 1. TOPICS, FREEFORM-FARBEN & SUB-TOPICS
+    // Freeform-Referenzen:
+    // - Netzmelone: #fda4af / #fb7185
+    // - Silber: #cbd5e1
+    // - Klee (50% Deckkraft): rgba(74, 222, 128, 0.5)
+    // - Mandarine (70% Deckkraft): rgba(251, 146, 60, 0.7)
+    // =========================================================================
+    const MANDARINE_70 = 'rgba(251, 146, 60, 0.7)';
+
+    const CATEGORIES = [
+      {
+        id: 'basics',
+        name: 'Basics',
+        color: '#fda4af',
+        textColor: '#0f172a',
+        badgeBg: '#be123c',
+        badgeText: '#ffffff',
+        subtopics: ['Alignment', 'Grip', 'Posture', 'Pre-Shot-Routine']
+      },
+      {
+        id: 'complete_guide',
+        name: 'Complete Guide',
+        color: '#fda4af',
+        textColor: '#0f172a',
+        badgeBg: '#be123c',
+        badgeText: '#ffffff',
+        subtopics: ['Driver', 'Eisen', 'Fairwayholz']
+      },
+      {
+        id: 'drills',
+        name: 'Drills',
+        color: '#fda4af',
+        textColor: '#0f172a',
+        badgeBg: '#be123c',
+        badgeText: '#ffffff',
+        subtopics: ['Driver', 'Eisen', 'Fairwayholz', 'Short Game', 'Green']
+      },
+      {
+        id: 'driver',
+        name: 'Driver',
+        color: '#cbd5e1',
+        textColor: '#0f172a',
+        badgeBg: '#475569',
+        badgeText: '#ffffff',
+        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish']
+      },
+      {
+        id: 'eisen',
+        name: 'Eisen',
+        color: '#cbd5e1',
+        textColor: '#0f172a',
+        badgeBg: '#475569',
+        badgeText: '#ffffff',
+        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish']
+      },
+      {
+        id: 'fairwayholz',
+        name: 'Fairwayholz',
+        color: '#cbd5e1',
+        textColor: '#0f172a',
+        badgeBg: '#475569',
+        badgeText: '#ffffff',
+        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish']
+      },
+      {
+        id: 'short_game',
+        name: 'Short Game',
+        color: 'rgba(74, 222, 128, 0.5)',
+        textColor: '#0f172a',
+        badgeBg: '#15803d',
+        badgeText: '#ffffff',
+        subtopics: ['Chipping', 'Pitching', 'Bunker']
+      },
+      {
+        id: 'green',
+        name: 'Green',
+        color: 'rgba(74, 222, 128, 0.5)',
+        textColor: '#0f172a',
+        badgeBg: '#047857',
+        badgeText: '#ffffff',
+        subtopics: ['Putting (Grüns lesen, Längenkontrolle)']
+      }
+    ];
+
+    const DEFAULT_PRO = 'Chris Ryan Golf';
+
+    const DEFAULT_PROS = [
+      'Chris Ryan Golf',
+      'Kerrod Gray',
+      'Michael Alexander',
+      'Danny Maude',
+      'Harry Shaw',
+      'Eric Cogorno',
+      'Rick Shiels',
+      'Porzak Golf',
+      'Athletic Motion Golf'
+    ];
+
+    const DEFAULT_TAGS = [
+      '#Driver',
+      '#Eisen',
+      '#Fairwayholz',
+      '#Takeaway',
+      '#Impact',
+      '#Alignment',
+      '#Grip',
+      '#Drill'
+    ];
+
+    const DEFAULT_VIDEOS = [
+      {
+        id: 'vid-1',
+        categoryId: 'basics',
+        subtopic: 'Alignment',
+        pro: 'Kerrod Gray',
+        title: 'How to Correctly Aim in Golf | The PERFECT Golf Alignment Routine',
+        url: 'https://www.youtube.com/watch?v=9L4h_Z1tF4k',
+        tags: ['#Alignment', '#KerrodGray'],
+        analysis:
+          'Zwischenziel (Intermediate Target) suchen (01:10), Schlagfläche zuerst ausrichten, danach Stand & Schultern parallel setzen.',
+        detailedAnalysis: '',
+        images: []
+      },
+      {
+        id: 'vid-2',
+        categoryId: 'basics',
+        subtopic: 'Grip',
+        pro: 'Michael Alexander',
+        title: 'Der Golfgriff, den niemand lehrt – und warum er alles verändert',
+        url: 'https://www.youtube.com/watch?v=64oA-1gK7A0',
+        tags: ['#Grip', '#MichaelAlexander'],
+        analysis:
+          'Schläger diagonal durch die Finger der linken Hand legen, 2–2,5 Knöchel sichtbar (01:45).',
+        detailedAnalysis: '',
+        images: []
+      },
+      {
+        id: 'vid-3',
+        categoryId: 'driver',
+        subtopic: 'Takeaway',
+        pro: 'Danny Maude',
+        title: 'What Nobody Tells You About How To Hit Driver Straight',
+        url: 'https://www.youtube.com/watch?v=xQ4d98Z2_1U',
+        tags: ['#Driver', '#Takeaway', '#DannyMaude'],
+        analysis:
+          'Aufwärtstreffen beim Driver beachten (00:15); offene Schlagfläche führt zum Slice, geschlossene zum Hook.',
+        detailedAnalysis: '',
+        images: []
+      }
+    ];
+
+    // =========================================================================
+    // 2. STATE, LESEMODUS & VAULT-KONFIGURATION
+    // =========================================================================
+    const STORAGE_KEYS = {
+      VIDEOS: 'golf_master_videos_v4',
+      PROS: 'golf_master_pros_v4',
+      TAGS: 'golf_master_tags_v1',
+      VAULT: 'golf_master_vault_code'
+    };
+
+    function getInitialVaultCode() {
+      const params = new URLSearchParams(window.location.search);
+      const urlVault = params.get('vault');
+      if (urlVault && urlVault.trim().length >= 3) {
+        const sanitized = urlVault.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+        if (sanitized) {
+          localStorage.setItem(STORAGE_KEYS.VAULT, sanitized);
+          return sanitized;
+        }
+      }
+      const saved = localStorage.getItem(STORAGE_KEYS.VAULT);
+      if (saved) return saved;
+      const generated = 'golf-master-' + Math.random().toString(36).substring(2, 7);
+      localStorage.setItem(STORAGE_KEYS.VAULT, generated);
+      return generated;
+    }
+
+    let state = {
+      videos: [],
+      pros: [],
+      tags: [],
+      vaultCode: getInitialVaultCode(),
+      selectedCategory: 'ALL',
+      searchQuery: '',
+      activeTagFilter: '',
+      modalTags: [],
+      modalImages: [],
+      expandedDetailedIds: {},
+      readOnlyMode: window.innerWidth < 768
+    };
+
+    // Firebase Referenzen
+    let db = null;
+    let auth = null;
+    let firebaseUser = null;
+    let unsubscribeSnapshot = null;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'golf-master-app';
+
+    function updateSyncStatus(status, label) {
+      const dot = document.getElementById('sync-dot');
+      const text = document.getElementById('sync-status-text');
+      const btn = document.getElementById('sync-status-btn');
+
+      text.textContent = label;
+      dot.className = 'w-2 h-2 rounded-full';
+      btn.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full border transition cursor-pointer';
+
+      if (status === 'live') {
+        dot.classList.add('bg-emerald-500');
+        btn.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-200', 'hover:bg-emerald-100');
+      } else if (status === 'syncing') {
+        dot.classList.add('bg-amber-500', 'animate-pulse');
+        btn.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-200');
+      } else {
+        dot.classList.add('bg-slate-400');
+        btn.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-200/70');
+      }
+    }
+
+    function loadLocalFallback() {
+      try {
+        const savedVideos = localStorage.getItem(STORAGE_KEYS.VIDEOS);
+        const savedPros = localStorage.getItem(STORAGE_KEYS.PROS);
+        const savedTags = localStorage.getItem(STORAGE_KEYS.TAGS);
+        state.videos = savedVideos ? JSON.parse(savedVideos) : [...DEFAULT_VIDEOS];
+        const parsedPros = savedPros ? JSON.parse(savedPros) : [...DEFAULT_PROS];
+        if (!parsedPros.includes(DEFAULT_PRO)) parsedPros.unshift(DEFAULT_PRO);
+        state.pros = parsedPros;
+        state.tags = savedTags ? JSON.parse(savedTags) : [...DEFAULT_TAGS];
+      } catch (e) {
+        state.videos = [...DEFAULT_VIDEOS];
+        state.pros = [...DEFAULT_PROS];
+        state.tags = [...DEFAULT_TAGS];
+      }
+    }
+
+    function saveLocalFallback() {
+      try {
+        localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(state.videos));
+        localStorage.setItem(STORAGE_KEYS.PROS, JSON.stringify(state.pros));
+        localStorage.setItem(STORAGE_KEYS.TAGS, JSON.stringify(state.tags));
+      } catch (e) {
+        showToast('Speicherlimit erreicht – ggf. große Bilder reduzieren.', 'error');
+      }
+    }
+
+    async function initFirebaseSync() {
+      loadLocalFallback();
+      renderAll();
+
+      if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+        updateSyncStatus('offline', 'Lokal gespeichert');
+        return;
+      }
+
+      try {
+        updateSyncStatus('syncing', 'Synchronisiere...');
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          const cred = await signInWithCustomToken(auth, __initial_auth_token);
+          firebaseUser = cred.user;
+        } else {
+          const cred = await signInAnonymously(auth);
+          firebaseUser = cred.user;
+        }
+
+        subscribeToVault(state.vaultCode);
+      } catch (err) {
+        console.error('Firebase Init Fehler:', err);
+        updateSyncStatus('offline', 'Lokal gespeichert');
+      }
+    }
+
+    function subscribeToVault(vaultCode) {
+      if (!db || !firebaseUser) return;
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+      }
+
+      updateSyncStatus('syncing', 'Synchronisiere...');
+      const vaultDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'golf_vaults', vaultCode);
+
+      unsubscribeSnapshot = onSnapshot(
+        vaultDocRef,
+        async (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (Array.isArray(data.videos)) state.videos = data.videos;
+            if (Array.isArray(data.pros)) state.pros = data.pros;
+            if (Array.isArray(data.tags)) state.tags = data.tags;
+            saveLocalFallback();
+            renderAll();
+            updateSyncStatus('live', 'Live synchronisiert');
+          } else {
+            await pushStateToCloud();
+          }
+        },
+        (error) => {
+          console.error('Firestore Snapshot Fehler:', error);
+          updateSyncStatus('offline', 'Lokal gespeichert');
+        }
+      );
+    }
+
+    async function pushStateToCloud() {
+      saveLocalFallback();
+      if (!db || !firebaseUser) {
+        updateSyncStatus('offline', 'Lokal gespeichert');
+        return;
+      }
+
+      try {
+        updateSyncStatus('syncing', 'Synchronisiere...');
+        const vaultDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'golf_vaults', state.vaultCode);
+        await setDoc(vaultDocRef, {
+          vaultCode: state.vaultCode,
+          updatedAt: new Date().toISOString(),
+          pros: state.pros,
+          tags: state.tags,
+          videos: state.videos
+        });
+        updateSyncStatus('live', 'Live synchronisiert');
+      } catch (err) {
+        console.error('Cloud Save Fehler:', err);
+        updateSyncStatus('offline', 'Lokal gespeichert');
+        showToast('Cloud-Sync fehlgeschlagen – lokal gesichert.', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 3. HILFSFUNKTIONEN, SLIDE-SUPPORT & LESEMODUS
+    // =========================================================================
+    window.slideContainer = function (elementId, deltaX) {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.scrollBy({ left: deltaX, behavior: 'smooth' });
+      }
+    };
+
+    function enableDragToScroll(elementId) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      let isDown = false;
+      let startX = 0;
+      let scrollLeft = 0;
+      let dragged = false;
+
+      el.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        isDown = true;
+        dragged = false;
+        startX = e.pageX - el.offsetLeft;
+        scrollLeft = el.scrollLeft;
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDown = false;
+        setTimeout(() => {
+          dragged = false;
+        }, 0);
+      });
+
+      el.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - el.offsetLeft;
+        const walk = (x - startX) * 1.4;
+        if (Math.abs(walk) > 4) dragged = true;
+        el.scrollLeft = scrollLeft - walk;
+      });
+
+      el.addEventListener(
+        'click',
+        (e) => {
+          if (dragged) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        },
+        true
+      );
+    }
+
+    function extractYouTubeId(url) {
+      if (!url) return null;
+      const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+      const match = url.match(regExp);
+      return match ? match[1] : null;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function formatAnalysisText(text) {
+      const safe = escapeHtml(text);
+      return safe
+        .replace(/\(\d{1,2}:\d{2}\)/g, '<span class="inline-block px-1 py-0.2 rounded bg-emerald-100 text-emerald-900 font-mono text-[10px] font-semibold">$&</span>')
+        .replace(/\n/g, '<br />');
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgClass = type === 'error' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-900 border-slate-200';
+      toast.className = `pointer-events-auto px-3.5 py-2.5 rounded-xl border ${bgClass} text-xs sm:text-sm font-medium shadow-lg flex items-center gap-2 transition-all duration-300`;
+      toast.innerHTML = `
+        <span class="w-2 h-2 rounded-full ${type === 'error' ? 'bg-white' : 'bg-emerald-500'}"></span>
+        <span>${escapeHtml(message)}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 2600);
+    }
+
+    function applyReadOnlyUI() {
+      const isRO = state.readOnlyMode;
+
+      const dBtn = document.getElementById('desktop-readonly-btn');
+      const dIcon = document.getElementById('desktop-readonly-icon');
+      const dLabel = document.getElementById('desktop-readonly-label');
+      const dAdd = document.getElementById('desktop-add-btn');
+      const dPros = document.getElementById('desktop-pros-btn');
+      const dTags = document.getElementById('desktop-tags-btn');
+
+      const mIcon = document.getElementById('mobile-readonly-icon');
+      const mLabel = document.getElementById('mobile-readonly-label');
+      const mAdd = document.getElementById('mobile-add-btn');
+      const emptyAdd = document.getElementById('empty-add-btn');
+
+      if (isRO) {
+        dIcon.textContent = '👁️';
+        dLabel.textContent = 'Lesemodus';
+        dBtn.classList.add('border-amber-300', 'bg-amber-50', 'text-amber-900');
+        dAdd.classList.add('hidden');
+        dPros.classList.add('hidden');
+        dTags.classList.add('hidden');
+
+        mIcon.textContent = '👁️';
+        mLabel.textContent = 'Lesemodus';
+        mAdd.classList.add('hidden');
+        if (emptyAdd) emptyAdd.classList.add('hidden');
+      } else {
+        dIcon.textContent = '✏️';
+        dLabel.textContent = 'Bearbeiten';
+        dBtn.classList.remove('border-amber-300', 'bg-amber-50', 'text-amber-900');
+        dAdd.classList.remove('hidden');
+        dPros.classList.remove('hidden');
+        dTags.classList.remove('hidden');
+
+        mIcon.textContent = '✏️';
+        mLabel.textContent = 'Bearbeiten';
+        mAdd.classList.remove('hidden');
+        if (emptyAdd) emptyAdd.classList.remove('hidden');
+      }
+    }
+
+    window.toggleReadOnlyMode = function () {
+      state.readOnlyMode = !state.readOnlyMode;
+      applyReadOnlyUI();
+      renderBoard();
+      showToast(state.readOnlyMode ? 'Lesemodus aktiv' : 'Bearbeitungs-Modus aktiv');
+    };
+
+    // =========================================================================
+    // 4. FILTER, SUCHE & SCHNELLFILTER-CHIPS
+    // =========================================================================
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      state.searchQuery = e.target.value.trim();
+      document.getElementById('clear-search-btn').classList.toggle('hidden', !state.searchQuery);
+      renderBoard();
+    });
+
+    window.clearSearch = function () {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      state.searchQuery = '';
+      document.getElementById('clear-search-btn').classList.add('hidden');
+      renderBoard();
+    };
+
+    window.setCategoryFilter = function (catId) {
+      state.selectedCategory = catId;
+      renderCategoryFilterBar();
+      renderBoard();
+    };
+
+    window.filterByTag = function (tag) {
+      state.activeTagFilter = state.activeTagFilter === tag ? '' : tag;
+      renderQuickChipsBar();
+      renderBoard();
+    };
+
+    window.filterByPro = function (proName) {
+      const input = document.getElementById('search-input');
+      if (state.searchQuery.toLowerCase() === proName.toLowerCase()) {
+        clearSearch();
+      } else {
+        input.value = proName;
+        state.searchQuery = proName;
+        document.getElementById('clear-search-btn').classList.remove('hidden');
+        renderBoard();
+      }
+      renderQuickChipsBar();
+    };
+
+    window.resetAllFilters = function () {
+      state.selectedCategory = 'ALL';
+      state.activeTagFilter = '';
+      clearSearch();
+      renderCategoryFilterBar();
+      renderQuickChipsBar();
+      renderBoard();
+    };
+
+    function getFilteredVideos() {
+      const q = state.searchQuery.toLowerCase();
+      return state.videos.filter((video) => {
+        if (state.selectedCategory !== 'ALL' && video.categoryId !== state.selectedCategory) {
+          return false;
+        }
+        if (state.activeTagFilter && !(video.tags || []).some((t) => t.toLowerCase() === state.activeTagFilter.toLowerCase())) {
+          return false;
+        }
+        if (!q) return true;
+
+        const cat = CATEGORIES.find((c) => c.id === video.categoryId);
+        const searchable = [
+          video.pro,
+          video.title,
+          video.subtopic,
+          video.analysis,
+          video.detailedAnalysis || '',
+          cat ? cat.name : '',
+          ...(video.tags || [])
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        return searchable.includes(q);
+      });
+    }
+
+    // =========================================================================
+    // 5. RENDERING: TOPICS, SCHNELLFILTER & KOMPAKTE VIDEOKARTEN
+    // =========================================================================
+    function renderAll() {
+      applyReadOnlyUI();
+      renderCategoryFilterBar();
+      renderQuickChipsBar();
+      renderBoard();
+    }
+
+    function renderCategoryFilterBar() {
+      const bar = document.getElementById('category-filter-bar');
+      const allActive = state.selectedCategory === 'ALL';
+
+      let html = `
+        <button
+          onclick="setCategoryFilter('ALL')"
+          class="shrink-0 px-3 py-1 rounded-lg text-[11px] font-bold tracking-wide transition cursor-pointer ${
+            allActive
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }"
+        >
+          ALLE BEREICHE (${state.videos.length})
+        </button>
+      `;
+
+      CATEGORIES.forEach((cat) => {
+        const count = state.videos.filter((v) => v.categoryId === cat.id).length;
+        const isActive = state.selectedCategory === cat.id;
+        html += `
+          <button
+            onclick="setCategoryFilter('${cat.id}')"
+            style="background-color: ${cat.color}; color: ${cat.textColor}; border-color: ${isActive ? '#0f172a' : 'rgba(15,23,42,0.16)'};"
+            class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-wide border transition flex items-center gap-1.5 cursor-pointer hover:brightness-95 ${
+              isActive ? 'ring-2 ring-slate-900/25 shadow-xs' : ''
+            }"
+          >
+            <span>${escapeHtml(cat.name)}</span>
+            <span class="px-1.5 py-0.2 rounded bg-white/60 text-slate-900 text-[10px] font-extrabold">${count}</span>
+          </button>
+        `;
+      });
+
+      bar.innerHTML = html;
+    }
+
+    function renderQuickChipsBar() {
+      const bar = document.getElementById('quick-chips-bar');
+      const proSet = new Set(state.pros.filter(Boolean));
+      state.videos.forEach((v) => {
+        if (v.pro) proSet.add(v.pro);
+      });
+      const allPros = Array.from(proSet);
+
+      const tagSet = new Set(state.tags.filter(Boolean));
+      state.videos.forEach((v) => {
+        (v.tags || []).forEach((t) => {
+          const isProTag = allPros.some((p) => '#' + p.replace(/\s+/g, '').toLowerCase() === t.toLowerCase());
+          if (!isProTag) tagSet.add(t);
+        });
+      });
+      const allTags = Array.from(tagSet);
+
+      let html = `<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1">Schnellfilter:</span>`;
+
+      allPros.forEach((pro) => {
+        const active = state.searchQuery.toLowerCase() === pro.toLowerCase();
+        html += `
+          <button
+            onclick="filterByPro('${escapeHtml(pro)}')"
+            class="shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition cursor-pointer ${
+              active
+                ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+            }"
+          >
+            👤 ${escapeHtml(pro)}
+          </button>
+        `;
+      });
+
+      allTags.forEach((tag) => {
+        const active = state.activeTagFilter.toLowerCase() === tag.toLowerCase();
+        html += `
+          <button
+            onclick="filterByTag('${escapeHtml(tag)}')"
+            class="shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition cursor-pointer ${
+              active
+                ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
+                : 'bg-indigo-50 text-indigo-800 border-indigo-200 hover:bg-indigo-100'
+            }"
+          >
+            ${escapeHtml(tag)}
+          </button>
+        `;
+      });
+
+      bar.innerHTML = html;
+    }
+
+    function renderBoard() {
+      const filtered = getFilteredVideos();
+      const boardContainer = document.getElementById('board-content');
+      const emptyState = document.getElementById('empty-state');
+      const badge = document.getElementById('video-count-badge');
+
+      badge.textContent = `${filtered.length} ${filtered.length === 1 ? 'Video' : 'Videos'}`;
+
+      const filterBar = document.getElementById('active-filters-bar');
+      const pillsContainer = document.getElementById('active-filter-pills');
+      const pills = [];
+
+      if (state.selectedCategory !== 'ALL') {
+        const cat = CATEGORIES.find((c) => c.id === state.selectedCategory);
+        if (cat) {
+          pills.push(`<span class="px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-900/15" style="background-color:${cat.color}; color:${cat.textColor}">${escapeHtml(cat.name)}</span>`);
+        }
+      }
+      if (state.activeTagFilter) {
+        pills.push(`<span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">Tag: ${escapeHtml(state.activeTagFilter)}</span>`);
+      }
+      if (state.searchQuery) {
+        pills.push(`<span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">Suche: „${escapeHtml(state.searchQuery)}“</span>`);
+      }
+
+      if (pills.length > 0) {
+        filterBar.classList.remove('hidden');
+        pillsContainer.innerHTML = pills.join('');
+      } else {
+        filterBar.classList.add('hidden');
+      }
+
+      if (filtered.length === 0) {
+        boardContainer.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      let sectionsHtml = '';
+
+      CATEGORIES.forEach((cat) => {
+        const catVideos = filtered.filter((v) => v.categoryId === cat.id);
+        if (catVideos.length === 0) return;
+
+        const addBtnHtml = state.readOnlyMode
+          ? ''
+          : `<button
+              onclick="openVideoModal('${cat.id}')"
+              style="background-color: ${MANDARINE_70};"
+              class="text-[11px] font-bold text-slate-950 hover:brightness-95 px-2.5 py-1.5 rounded-lg border border-orange-500/35 shadow-2xs transition cursor-pointer"
+            >
+              + Video zu ${escapeHtml(cat.name)}
+            </button>`;
+
+        sectionsHtml += `
+          <section class="space-y-2.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <div
+                style="background-color: ${cat.color}; color: ${cat.textColor};"
+                class="px-3.5 py-1.5 rounded-lg shadow-2xs border border-slate-900/15 inline-flex items-center gap-2.5"
+              >
+                <h2 class="text-xs sm:text-sm font-extrabold tracking-wide">
+                  ${escapeHtml(cat.name)}
+                </h2>
+                <span class="text-[11px] font-extrabold px-1.5 py-0.2 rounded bg-white/65 text-slate-900">
+                  ${catVideos.length}
+                </span>
+              </div>
+              ${addBtnHtml}
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 items-start">
+              ${catVideos.map((video) => renderVideoCard(video, cat)).join('')}
+            </div>
+          </section>
+        `;
+      });
+
+      boardContainer.innerHTML = sectionsHtml;
+    }
+
+    window.toggleDetailedAnalysis = function (videoId) {
+      state.expandedDetailedIds[videoId] = !state.expandedDetailedIds[videoId];
+      renderBoard();
+    };
+
+    window.openImageLightbox = function (videoId, imgIndex) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video || !Array.isArray(video.images) || !video.images[imgIndex]) return;
+      const item = video.images[imgIndex];
+      const src = typeof item === 'string' ? item : item.dataUrl;
+      const name = typeof item === 'string' ? `Bild ${imgIndex + 1}` : item.name || `Bild ${imgIndex + 1}`;
+
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox-caption').textContent = `${video.pro} – ${name}`;
+      const modal = document.getElementById('image-lightbox-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeImageLightbox = function () {
+      const modal = document.getElementById('image-lightbox-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      document.getElementById('lightbox-img').src = '';
+    };
+
+    function renderVideoCard(video, cat) {
+      const ytId = extractYouTubeId(video.url);
+      const thumbUrl = ytId
+        ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
+        : 'https://placehold.co/320x180/e2e8f0/475569?text=Golf+Video';
+
+      const tagsHtml = (video.tags || [])
+        .map((tag) => {
+          const isTagActive = state.activeTagFilter.toLowerCase() === tag.toLowerCase();
+          return `
+            <button
+              onclick="filterByTag('${escapeHtml(tag)}')"
+              class="text-[10px] font-semibold transition cursor-pointer ${
+                isTagActive
+                  ? 'text-white bg-indigo-600 px-1 py-0.2 rounded'
+                  : 'text-indigo-700 hover:text-indigo-950'
+              }"
+            >
+              ${escapeHtml(tag)}
+            </button>
+          `;
+        })
+        .join(' ');
+
+      const cardActionsHtml = state.readOnlyMode
+        ? ''
+        : `<div class="flex items-center gap-0.5 shrink-0">
+            <button
+              onclick="openEditVideoModal('${video.id}')"
+              title="Eintrag bearbeiten"
+              class="p-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button
+              onclick="requestDeleteVideo('${video.id}')"
+              title="Eintrag löschen"
+              class="p-1 rounded-md text-slate-500 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>`;
+
+      const images = Array.isArray(video.images) ? video.images : [];
+      const imagesThumbHtml =
+        images.length > 0
+          ? `<div class="px-2.5 pt-1.5 flex flex-wrap items-center gap-1.5">
+              ${images
+                .map((img, idx) => {
+                  const src = typeof img === 'string' ? img : img.dataUrl;
+                  const alt = typeof img === 'string' ? `Bild ${idx + 1}` : img.name || `Bild ${idx + 1}`;
+                  return `
+                    <button
+                      type="button"
+                      onclick="openImageLightbox('${video.id}', ${idx})"
+                      title="${escapeHtml(alt)} – Klick für Großansicht"
+                      class="w-11 h-11 rounded-md overflow-hidden border border-slate-200 hover:border-emerald-500 shadow-2xs shrink-0 cursor-pointer transition hover:scale-105"
+                    >
+                      <img src="${src}" alt="${escapeHtml(alt)}" class="w-full h-full object-cover" />
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>`
+          : '';
+
+      const isExpanded = !!state.expandedDetailedIds[video.id];
+      const hasDetailed = !!(video.detailedAnalysis && video.detailedAnalysis.trim());
+      const detailedLabelText = hasDetailed ? 'Ausführlicher Analyse +' : 'Ausführlicher Analyse';
+      const detailedPanelHtml = isExpanded
+        ? `<div class="mt-1.5 p-2 rounded-lg bg-emerald-50/80 border border-emerald-200 text-[11px] text-slate-800 leading-snug max-h-36 overflow-y-auto">
+            ${
+              hasDetailed
+                ? formatAnalysisText(video.detailedAnalysis)
+                : '<span class="italic text-slate-500">Noch keine ausführliche Analyse hinterlegt.</span>'
+            }
+          </div>`
+        : '';
+
+      return `
+        <article class="bg-white hover:bg-slate-50/90 border border-slate-200 hover:border-slate-300 rounded-xl overflow-hidden shadow-2xs flex flex-col transition">
+          
+          <!-- Obere Leiste: Sub-Topic-Badge + Bearbeiten/Löschen -->
+          <div class="px-2.5 pt-2 pb-1 flex items-center justify-between gap-1">
+            <span
+              style="background-color: ${cat.badgeBg}; color: ${cat.badgeText};"
+              class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide truncate"
+            >
+              ${escapeHtml(video.subtopic || 'Allgemein')}
+            </span>
+            ${cardActionsHtml}
+          </div>
+
+          <!-- Pro & Tags -->
+          <div class="px-2.5 pb-1.5">
+            <button
+              onclick="filterByPro('${escapeHtml(video.pro)}')"
+              title="Alle Videos von ${escapeHtml(video.pro)} anzeigen"
+              class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 hover:text-amber-950 transition cursor-pointer truncate max-w-full"
+            >
+              <span>👤</span>
+              <span class="truncate">${escapeHtml(video.pro)}</span>
+            </button>
+            <div class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-tight">
+              ${tagsHtml}
+            </div>
+          </div>
+
+          <!-- Kompaktes YouTube Thumbnail + Titel -->
+          <div class="px-2.5">
+            <div
+              onclick="openPlayerModal('${video.id}')"
+              class="relative aspect-video w-full rounded-lg overflow-hidden bg-slate-900 border border-slate-200 cursor-pointer group/thumb"
+            >
+              <img
+                src="${thumbUrl}"
+                alt="${escapeHtml(video.title || video.pro)}"
+                onerror="this.src='https://placehold.co/320x180/e2e8f0/475569?text=YouTube+Video'"
+                class="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform duration-200"
+              />
+              <div class="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/10 transition flex items-center justify-center">
+                <div class="w-8 h-8 rounded-full bg-black/75 group-hover/thumb:bg-red-600 text-white flex items-center justify-center shadow transition">
+                  <svg class="w-3.5 h-3.5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-1.5 flex items-start justify-between gap-1">
+              <h3 class="text-xs font-bold text-slate-900 leading-snug line-clamp-2">
+                ${escapeHtml(video.title || 'Golf Video Analyse')}
+              </h3>
+              <a
+                href="${escapeHtml(video.url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Auf YouTube öffnen"
+                class="shrink-0 text-[11px] text-slate-400 hover:text-emerald-700 px-0.5"
+              >
+                ↗
+              </a>
+            </div>
+          </div>
+
+          <!-- Hochgeladene Bild-Thumbnails -->
+          ${imagesThumbHtml}
+
+          <!-- Tafel oberhalb der Kurzanalyse: Hellgrüner Button für ausführliche Analyse -->
+          <div class="px-2.5 pt-2">
+            <div class="p-1.5 rounded-lg bg-emerald-50/60 border border-emerald-200/80">
+              <button
+                type="button"
+                onclick="toggleDetailedAnalysis('${video.id}')"
+                class="w-full py-1 px-2 rounded-md bg-emerald-200 hover:bg-emerald-300 text-emerald-950 text-[10px] font-extrabold tracking-wide text-left transition cursor-pointer"
+              >
+                <span>${detailedLabelText}</span>
+              </button>
+              ${detailedPanelHtml}
+            </div>
+          </div>
+
+          <!-- Kompakte Kurz-Analyse -->
+          <div class="px-2.5 pt-1.5 pb-2.5 mt-1.5 border-t border-slate-100 max-h-20 overflow-y-auto">
+            <div class="text-[11px] text-slate-700 leading-snug">
+              ${formatAnalysisText(video.analysis)}
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    // =========================================================================
+    // 6. VIDEO MODAL (ANLEGEN & BEARBEITEN) MIT SUB-TOPIC DROPDOWN & DEFAULT PRO
+    // =========================================================================
+    function populateCategorySelect() {
+      const select = document.getElementById('input-category');
+      select.innerHTML = CATEGORIES.map(
+        (c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`
+      ).join('');
+    }
+
+    window.populateSubtopicSelect = function (selectedSubtopic = '') {
+      const catId = document.getElementById('input-category').value;
+      const cat = CATEGORIES.find((c) => c.id === catId);
+      const select = document.getElementById('input-subtopic');
+      const customInput = document.getElementById('input-subtopic-custom');
+      const baseSubs = cat ? [...cat.subtopics] : [];
+
+      if (selectedSubtopic && !baseSubs.includes(selectedSubtopic)) {
+        baseSubs.push(selectedSubtopic);
+      }
+
+      select.innerHTML =
+        baseSubs
+          .map(
+            (sub) =>
+              `<option value="${escapeHtml(sub)}" ${sub === selectedSubtopic ? 'selected' : ''}>${escapeHtml(sub)}</option>`
+          )
+          .join('') + `<option value="__CUSTOM__">+ Eigenes Sub-Topic...</option>`;
+
+      toggleCustomSubtopicField();
+    };
+
+    window.toggleCustomSubtopicField = function () {
+      const select = document.getElementById('input-subtopic');
+      const customInput = document.getElementById('input-subtopic-custom');
+      if (select.value === '__CUSTOM__') {
+        customInput.classList.remove('hidden');
+        customInput.required = true;
+        customInput.focus();
+      } else {
+        customInput.classList.add('hidden');
+        customInput.required = false;
+        customInput.value = '';
+      }
+    };
+
+    function populateProSelect(selectedPro = DEFAULT_PRO) {
+      const select = document.getElementById('input-pro');
+      const sortedPros = [...state.pros].sort((a, b) => {
+        if (a === DEFAULT_PRO) return -1;
+        if (b === DEFAULT_PRO) return 1;
+        return a.localeCompare(b, 'de');
+      });
+      select.innerHTML = sortedPros
+        .map(
+          (pro) =>
+            `<option value="${escapeHtml(pro)}" ${pro === selectedPro ? 'selected' : ''}>${escapeHtml(pro)}</option>`
+        )
+        .join('');
+    }
+
+    window.toggleQuickProInput = function () {
+      const box = document.getElementById('quick-pro-box');
+      box.classList.toggle('hidden');
+      if (!box.classList.contains('hidden')) {
+        document.getElementById('quick-pro-name').focus();
+      }
+    };
+
+    window.quickAddPro = async function () {
+      const input = document.getElementById('quick-pro-name');
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (!state.pros.some((p) => p.toLowerCase() === name.toLowerCase())) {
+        state.pros.push(name);
+        await pushStateToCloud();
+      }
+      populateProSelect(name);
+      renderQuickChipsBar();
+      input.value = '';
+      document.getElementById('quick-pro-box').classList.add('hidden');
+      showToast(`Pro „${name}“ hinzugefügt.`);
+    };
+
+    window.previewYoutubeUrl = function () {
+      const url = document.getElementById('input-url').value.trim();
+      const ytId = extractYouTubeId(url);
+      const box = document.getElementById('yt-preview-box');
+      const img = document.getElementById('yt-preview-img');
+
+      if (ytId) {
+        img.src = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+        box.classList.remove('hidden');
+      } else {
+        box.classList.add('hidden');
+      }
+    };
+
+    function compressImageFile(file, maxDim = 1000, quality = 0.78) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            let { width, height } = img;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve({
+              name: file.name || 'bild.jpg',
+              dataUrl: canvas.toDataURL('image/jpeg', quality)
+            });
+          };
+          img.onerror = reject;
+          img.src = ev.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    window.handleImageUpload = async function (event) {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        try {
+          const compressed = await compressImageFile(file);
+          state.modalImages.push(compressed);
+        } catch (err) {
+          showToast(`Bild „${file.name}“ konnte nicht geladen werden.`, 'error');
+        }
+      }
+      renderModalImages();
+      event.target.value = '';
+    };
+
+    window.removeModalImage = function (index) {
+      state.modalImages.splice(index, 1);
+      renderModalImages();
+    };
+
+    function renderModalImages() {
+      const container = document.getElementById('modal-images-list');
+      container.innerHTML = state.modalImages
+        .map((img, idx) => {
+          const src = typeof img === 'string' ? img : img.dataUrl;
+          const name = typeof img === 'string' ? `Bild ${idx + 1}` : img.name || `Bild ${idx + 1}`;
+          return `
+            <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group">
+              <img src="${src}" alt="${escapeHtml(name)}" class="w-full h-full object-cover" />
+              <button
+                type="button"
+                onclick="removeModalImage(${idx})"
+                title="Bild entfernen"
+                class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center shadow cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    function normalizeTag(raw) {
+      const cleaned = raw.trim().replace(/^#+/, '').replace(/\s+/g, '');
+      return cleaned ? `#${cleaned}` : '';
+    }
+
+    window.handleTagKeydown = function (e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const input = e.target;
+        const formatted = normalizeTag(input.value);
+        if (formatted && !state.modalTags.some((t) => t.toLowerCase() === formatted.toLowerCase())) {
+          state.modalTags.push(formatted);
+          renderModalTags();
+        }
+        input.value = '';
+      }
+    };
+
+    window.addSuggestedTag = function (tag) {
+      if (!state.modalTags.some((t) => t.toLowerCase() === tag.toLowerCase())) {
+        state.modalTags.push(tag);
+        renderModalTags();
+      }
+    };
+
+    window.removeModalTag = function (index) {
+      state.modalTags.splice(index, 1);
+      renderModalTags();
+    };
+
+    function renderModalTags() {
+      const container = document.getElementById('modal-tags-list');
+      container.innerHTML = state.modalTags
+        .map(
+          (tag, idx) => `
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-800 border border-indigo-200 text-xs font-semibold">
+            ${escapeHtml(tag)}
+            <button type="button" onclick="removeModalTag(${idx})" class="hover:text-indigo-950 ml-0.5 cursor-pointer">&times;</button>
+          </span>
+        `
+        )
+        .join('');
+    }
+
+    function renderSuggestedTags() {
+      const allTags = new Set([...DEFAULT_TAGS, ...state.tags]);
+      state.videos.forEach((v) => (v.tags || []).forEach((t) => allTags.add(t)));
+
+      const container = document.getElementById('suggested-tags-container');
+      const sample = Array.from(allTags).slice(0, 10);
+      container.innerHTML =
+        `<span class="text-[11px] text-slate-400">Vorschläge:</span>` +
+        sample
+          .map(
+            (t) =>
+              `<button type="button" onclick="addSuggestedTag('${escapeHtml(t)}')" class="text-[11px] px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer">${escapeHtml(t)}</button>`
+          )
+          .join('');
+    }
+
+    window.openVideoModal = function (preselectedCategoryId = null) {
+      document.getElementById('edit-video-id').value = '';
+      document.getElementById('video-modal-title').textContent = 'Neues Video anlegen';
+      document.getElementById('video-form').reset();
+      document.getElementById('yt-preview-box').classList.add('hidden');
+      document.getElementById('quick-pro-box').classList.add('hidden');
+
+      populateCategorySelect();
+      if (preselectedCategoryId) {
+        document.getElementById('input-category').value = preselectedCategoryId;
+      } else if (state.selectedCategory !== 'ALL') {
+        document.getElementById('input-category').value = state.selectedCategory;
+      }
+      populateSubtopicSelect();
+      populateProSelect(DEFAULT_PRO);
+
+      state.modalTags = [];
+      state.modalImages = [];
+      renderModalTags();
+      renderModalImages();
+      renderSuggestedTags();
+
+      const modal = document.getElementById('video-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.openEditVideoModal = function (videoId) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video) return;
+
+      document.getElementById('edit-video-id').value = video.id;
+      document.getElementById('video-modal-title').textContent = 'Video-Analyse bearbeiten';
+      document.getElementById('quick-pro-box').classList.add('hidden');
+
+      populateCategorySelect();
+      document.getElementById('input-category').value = video.categoryId;
+      populateSubtopicSelect(video.subtopic || '');
+
+      populateProSelect(video.pro || DEFAULT_PRO);
+      document.getElementById('input-url').value = video.url || '';
+      document.getElementById('input-title').value = video.title || '';
+      document.getElementById('input-analysis').value = video.analysis || '';
+      document.getElementById('input-detailed-analysis').value = video.detailedAnalysis || '';
+      document.getElementById('input-tag-field').value = '';
+
+      state.modalTags = [...(video.tags || [])];
+      state.modalImages = Array.isArray(video.images) ? [...video.images] : [];
+      renderModalTags();
+      renderModalImages();
+      renderSuggestedTags();
+      previewYoutubeUrl();
+
+      const modal = document.getElementById('video-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeVideoModal = function () {
+      const modal = document.getElementById('video-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.saveVideo = async function (e) {
+      e.preventDefault();
+
+      const pendingTagInput = document.getElementById('input-tag-field');
+      if (pendingTagInput.value.trim()) {
+        pendingTagInput.value.split(',').forEach((part) => {
+          const formatted = normalizeTag(part);
+          if (formatted && !state.modalTags.some((t) => t.toLowerCase() === formatted.toLowerCase())) {
+            state.modalTags.push(formatted);
+          }
+        });
+      }
+
+      const editId = document.getElementById('edit-video-id').value;
+      const categoryId = document.getElementById('input-category').value;
+      const subtopicSelectVal = document.getElementById('input-subtopic').value;
+      const subtopicCustomVal = document.getElementById('input-subtopic-custom').value.trim();
+      const subtopic = subtopicSelectVal === '__CUSTOM__' ? subtopicCustomVal : subtopicSelectVal;
+      const pro = document.getElementById('input-pro').value;
+      const url = document.getElementById('input-url').value.trim();
+      const title = document.getElementById('input-title').value.trim();
+      if (!title) {
+        showToast('Bitte einen Video-Titel eingeben.', 'error');
+        document.getElementById('input-title').focus();
+        return;
+      }
+      const analysis = document.getElementById('input-analysis').value.trim();
+      const detailedAnalysis = document.getElementById('input-detailed-analysis').value.trim();
+      const images = [...state.modalImages];
+
+      const tags = [...state.modalTags];
+      tags.forEach((t) => {
+        if (!state.tags.some((existing) => existing.toLowerCase() === t.toLowerCase())) {
+          state.tags.push(t);
+        }
+      });
+
+      const proTag = normalizeTag(pro);
+      if (proTag && !tags.some((t) => t.toLowerCase() === proTag.toLowerCase())) {
+        tags.push(proTag);
+      }
+
+      if (editId) {
+        const idx = state.videos.findIndex((v) => v.id === editId);
+        if (idx !== -1) {
+          state.videos[idx] = { ...state.videos[idx], categoryId, subtopic, pro, url, title, analysis, detailedAnalysis, images, tags };
+          showToast('Änderungen gespeichert.');
+        }
+      } else {
+        const newVideo = {
+          id: 'vid-' + Date.now(),
+          categoryId,
+          subtopic,
+          pro,
+          url,
+          title,
+          analysis,
+          detailedAnalysis,
+          images,
+          tags
+        };
+        state.videos.unshift(newVideo);
+        showToast('Neues Video gespeichert!');
+      }
+
+      closeVideoModal();
+      renderAll();
+      await pushStateToCloud();
+    };
+
+    // =========================================================================
+    // 7. LÖSCHEN MIT EIGENEM DIALOG
+    // =========================================================================
+    let videoIdToDelete = null;
+
+    window.requestDeleteVideo = function (videoId) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video) return;
+      videoIdToDelete = videoId;
+      document.getElementById('confirm-modal-text').textContent = `Möchtest du „${video.title}“ (${video.pro}) wirklich entfernen?`;
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeConfirmModal = function () {
+      videoIdToDelete = null;
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+      if (!videoIdToDelete) return;
+      state.videos = state.videos.filter((v) => v.id !== videoIdToDelete);
+      closeConfirmModal();
+      renderAll();
+      showToast('Eintrag wurde gelöscht.');
+      await pushStateToCloud();
+    });
+
+    // =========================================================================
+    // 8. SYNC-TRESOR MODAL & LINK-KOPIEREN
+    // =========================================================================
+    window.openSyncModal = function () {
+      document.getElementById('vault-code-input').value = state.vaultCode;
+      const shareUrl = `${window.location.origin}${window.location.pathname}?vault=${encodeURIComponent(state.vaultCode)}`;
+      document.getElementById('iphone-share-url').value = shareUrl;
+
+      const modal = document.getElementById('sync-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeSyncModal = function () {
+      const modal = document.getElementById('sync-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.changeVaultCode = function (e) {
+      e.preventDefault();
+      const raw = document.getElementById('vault-code-input').value.trim().toLowerCase();
+      const sanitized = raw.replace(/[^a-z0-9-_]/g, '');
+      if (!sanitized || sanitized.length < 4) {
+        showToast('Bitte mindestens 4 Zeichen (Buchstaben/Zahlen) eingeben.', 'error');
+        return;
+      }
+
+      state.vaultCode = sanitized;
+      localStorage.setItem(STORAGE_KEYS.VAULT, sanitized);
+
+      const newUrl = `${window.location.origin}${window.location.pathname}?vault=${encodeURIComponent(sanitized)}`;
+      window.history.replaceState({}, '', newUrl);
+      document.getElementById('iphone-share-url').value = newUrl;
+
+      subscribeToVault(sanitized);
+      showToast(`Mit Tresor „${sanitized}“ verbunden!`);
+    };
+
+    window.copyShareUrl = function () {
+      const input = document.getElementById('iphone-share-url');
+      input.select();
+      input.setSelectionRange(0, 99999);
+      document.execCommand('copy');
+      showToast('iPhone-Link in die Zwischenablage kopiert!');
+    };
+
+    // =========================================================================
+    // 9. PRO-MANAGER & TAG-MANAGER MODALS
+    // =========================================================================
+    window.openProModal = function () {
+      renderProManagerList();
+      const modal = document.getElementById('pro-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeProModal = function () {
+      const modal = document.getElementById('pro-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    function renderProManagerList() {
+      const container = document.getElementById('pro-manager-list');
+      const sorted = [...state.pros].sort((a, b) => a.localeCompare(b, 'de'));
+
+      container.innerHTML = sorted
+        .map((pro) => {
+          const count = state.videos.filter((v) => v.pro === pro).length;
+          return `
+            <div class="px-3.5 py-2 flex items-center justify-between text-xs sm:text-sm">
+              <div>
+                <span class="font-semibold text-slate-900">${escapeHtml(pro)}</span>
+                <span class="ml-2 text-xs text-slate-500">(${count} ${count === 1 ? 'Video' : 'Videos'})</span>
+              </div>
+              <button
+                onclick="deletePro('${escapeHtml(pro)}')"
+                class="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
+                title="Aus Dropdown entfernen"
+              >
+                Entfernen
+              </button>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    window.addProFromManager = async function (e) {
+      e.preventDefault();
+      const input = document.getElementById('manager-pro-input');
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (state.pros.some((p) => p.toLowerCase() === name.toLowerCase())) {
+        showToast('Dieser Pro existiert bereits in der Liste.', 'error');
+        return;
+      }
+
+      state.pros.push(name);
+      input.value = '';
+      renderProManagerList();
+      renderQuickChipsBar();
+      showToast(`Pro „${name}“ gespeichert.`);
+      await pushStateToCloud();
+    };
+
+    window.deletePro = async function (proName) {
+      state.pros = state.pros.filter((p) => p !== proName);
+      renderProManagerList();
+      renderQuickChipsBar();
+      showToast(`Pro „${proName}“ entfernt.`);
+      await pushStateToCloud();
+    };
+
+    window.openTagModal = function () {
+      renderTagManagerList();
+      const modal = document.getElementById('tag-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      document.getElementById('manager-tag-input').focus();
+    };
+
+    window.closeTagModal = function () {
+      const modal = document.getElementById('tag-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    function renderTagManagerList() {
