@@ -2308,7 +2308,95 @@
     // =========================================================================
     // 9. PRO-MANAGER, SUBTOPIC-MANAGER & TAG-MANAGER MODALS (MIT BEARBEITEN)
     // =========================================================================
+    function initSubtopicManagerDelegation() {
+      const container = document.getElementById('subtopic-manager-list');
+      if (!container || container.dataset.bound === 'true') return;
+      container.dataset.bound = 'true';
+
+      container.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const idx = Number(btn.dataset.index);
+        const subs = [...getAllSubtopics()].sort((a, b) => a.localeCompare(b, 'de'));
+        const targetName = Number.isInteger(idx) && subs[idx] ? subs[idx] : '';
+
+        if (action === 'edit' && targetName) {
+          state.editingSubtopicName = targetName;
+          renderSubtopicManagerList();
+          const editInput = document.getElementById('edit-subtopic-inline-input');
+          if (editInput) {
+            editInput.focus();
+            editInput.select();
+          }
+        } else if (action === 'cancel') {
+          state.editingSubtopicName = '';
+          renderSubtopicManagerList();
+        } else if (action === 'save') {
+          const oldName = state.editingSubtopicName;
+          const input = document.getElementById('edit-subtopic-inline-input');
+          if (!input || !oldName) return;
+          const newName = input.value.trim();
+          if (!newName) {
+            showToast('Bitte einen Sub-Topic-Namen eingeben.', 'error');
+            return;
+          }
+
+          const duplicate = state.subtopics.some(
+            (s) => s.toLowerCase() === newName.toLowerCase() && s.toLowerCase() !== oldName.toLowerCase()
+          );
+          if (duplicate) {
+            showToast('Dieses Sub-Topic existiert bereits.', 'error');
+            return;
+          }
+
+          const listIdx = state.subtopics.findIndex((s) => s.toLowerCase() === oldName.toLowerCase());
+          if (listIdx !== -1) {
+            state.subtopics[listIdx] = newName;
+          } else {
+            state.subtopics.push(newName);
+          }
+
+          state.videos.forEach((v) => {
+            if ((v.subtopic || '').toLowerCase() === oldName.toLowerCase()) {
+              v.subtopic = newName;
+            }
+          });
+
+          state.editingSubtopicName = '';
+          renderSubtopicManagerList();
+          renderBoard();
+          showToast(`Sub-Topic zu „${newName}“ geändert.`);
+          await pushStateToCloud();
+        } else if (action === 'delete' && targetName) {
+          state.subtopics = state.subtopics.filter(
+            (s) => s.toLowerCase() !== targetName.toLowerCase()
+          );
+          if (state.editingSubtopicName.toLowerCase() === targetName.toLowerCase()) {
+            state.editingSubtopicName = '';
+          }
+          renderSubtopicManagerList();
+          showToast(`Sub-Topic „${targetName}“ entfernt.`);
+          await pushStateToCloud();
+        }
+      });
+
+      container.addEventListener('keydown', async (e) => {
+        if (e.target.id !== 'edit-subtopic-inline-input') return;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const saveBtn = container.querySelector('button[data-action="save"]');
+          if (saveBtn) saveBtn.click();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          state.editingSubtopicName = '';
+          renderSubtopicManagerList();
+        }
+      });
+    }
+
     window.openSubtopicModal = function () {
+      initSubtopicManagerDelegation();
       state.editingSubtopicName = '';
       renderSubtopicManagerList();
       const modal = document.getElementById('subtopic-modal');
@@ -2324,59 +2412,8 @@
       modal.classList.remove('flex');
     };
 
-    window.startEditSubtopic = function (subName) {
-      state.editingSubtopicName = subName;
-      renderSubtopicManagerList();
-      const editInput = document.getElementById('edit-subtopic-inline-input');
-      if (editInput) {
-        editInput.focus();
-        editInput.select();
-      }
-    };
-
-    window.cancelEditSubtopic = function () {
-      state.editingSubtopicName = '';
-      renderSubtopicManagerList();
-    };
-
-    window.saveEditedSubtopic = async function (oldName) {
-      const input = document.getElementById('edit-subtopic-inline-input');
-      if (!input) return;
-      const newName = input.value.trim();
-      if (!newName) {
-        showToast('Bitte einen Sub-Topic-Namen eingeben.', 'error');
-        return;
-      }
-
-      const duplicate = state.subtopics.some(
-        (s) => s.toLowerCase() === newName.toLowerCase() && s.toLowerCase() !== oldName.toLowerCase()
-      );
-      if (duplicate) {
-        showToast('Dieses Sub-Topic existiert bereits.', 'error');
-        return;
-      }
-
-      const idx = state.subtopics.findIndex((s) => s.toLowerCase() === oldName.toLowerCase());
-      if (idx !== -1) {
-        state.subtopics[idx] = newName;
-      } else {
-        state.subtopics.push(newName);
-      }
-
-      state.videos.forEach((v) => {
-        if ((v.subtopic || '').toLowerCase() === oldName.toLowerCase()) {
-          v.subtopic = newName;
-        }
-      });
-
-      state.editingSubtopicName = '';
-      renderSubtopicManagerList();
-      renderBoard();
-      showToast(`Sub-Topic zu „${newName}“ geändert.`);
-      await pushStateToCloud();
-    };
-
     window.renderSubtopicManagerList = function () {
+      initSubtopicManagerDelegation();
       const container = document.getElementById('subtopic-manager-list');
       const subs = [...getAllSubtopics()].sort((a, b) => a.localeCompare(b, 'de'));
 
@@ -2386,7 +2423,7 @@
       }
 
       container.innerHTML = subs
-        .map((sub) => {
+        .map((sub, idx) => {
           const count = state.videos.filter(
             (v) => (v.subtopic || '').toLowerCase() === sub.toLowerCase()
           ).length;
@@ -2398,19 +2435,20 @@
                   id="edit-subtopic-inline-input"
                   type="text"
                   value="${escapeHtml(sub)}"
-                  onkeydown="if(event.key==='Enter'){event.preventDefault();saveEditedSubtopic('${escapeHtml(sub)}');}else if(event.key==='Escape'){cancelEditSubtopic();}"
                   class="flex-1 min-w-0 px-2.5 py-1 rounded-lg bg-white border border-emerald-400 text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none"
                 />
                 <button
                   type="button"
-                  onclick="saveEditedSubtopic('${escapeHtml(sub)}')"
+                  data-action="save"
+                  data-index="${idx}"
                   class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer shrink-0"
                 >
                   OK
                 </button>
                 <button
                   type="button"
-                  onclick="cancelEditSubtopic()"
+                  data-action="cancel"
+                  data-index="${idx}"
                   class="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium cursor-pointer shrink-0"
                 >
                   Abbruch
@@ -2428,7 +2466,8 @@
               <div class="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
-                  onclick="startEditSubtopic('${escapeHtml(sub)}')"
+                  data-action="edit"
+                  data-index="${idx}"
                   class="text-xs font-medium text-emerald-700 hover:text-emerald-900 px-2 py-1 rounded hover:bg-emerald-50 transition cursor-pointer"
                   title="Sub-Topic bearbeiten"
                 >
@@ -2436,7 +2475,8 @@
                 </button>
                 <button
                   type="button"
-                  onclick="deleteSubtopic('${escapeHtml(sub)}')"
+                  data-action="delete"
+                  data-index="${idx}"
                   class="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
                   title="Sub-Topic entfernen"
                 >
@@ -2467,19 +2507,6 @@
       input.value = '';
       renderSubtopicManagerList();
       showToast(`Sub-Topic „${name}“ gespeichert.`);
-      await pushStateToCloud();
-    };
-
-    window.deleteSubtopic = async function (subName) {
-      if (!Array.isArray(state.subtopics)) return;
-      state.subtopics = state.subtopics.filter(
-        (s) => s.toLowerCase() !== subName.toLowerCase()
-      );
-      if (state.editingSubtopicName.toLowerCase() === subName.toLowerCase()) {
-        state.editingSubtopicName = '';
-      }
-      renderSubtopicManagerList();
-      showToast(`Sub-Topic „${subName}“ entfernt.`);
       await pushStateToCloud();
     };
 
@@ -2549,7 +2576,105 @@
       await pushStateToCloud();
     };
 
+    function initTagManagerDelegation() {
+      const container = document.getElementById('tag-manager-list');
+      if (!container || container.dataset.bound === 'true') return;
+      container.dataset.bound = 'true';
+
+      container.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const idx = Number(btn.dataset.index);
+        const sorted = [...state.tags].sort((a, b) => a.localeCompare(b, 'de'));
+        const targetTag = Number.isInteger(idx) && sorted[idx] ? sorted[idx] : '';
+
+        if (action === 'edit' && targetTag) {
+          state.editingTagName = targetTag;
+          renderTagManagerList();
+          const editInput = document.getElementById('edit-tag-inline-input');
+          if (editInput) {
+            editInput.focus();
+            editInput.select();
+          }
+        } else if (action === 'cancel') {
+          state.editingTagName = '';
+          renderTagManagerList();
+        } else if (action === 'save') {
+          const oldTag = state.editingTagName;
+          const input = document.getElementById('edit-tag-inline-input');
+          if (!input || !oldTag) return;
+          const formatted = normalizeTag(input.value);
+          if (!formatted) {
+            showToast('Bitte einen gültigen Tag eingeben.', 'error');
+            return;
+          }
+
+          const duplicate = state.tags.some(
+            (t) => t.toLowerCase() === formatted.toLowerCase() && t.toLowerCase() !== oldTag.toLowerCase()
+          );
+          if (duplicate) {
+            showToast('Dieser Tag existiert bereits in der Liste.', 'error');
+            return;
+          }
+
+          const listIdx = state.tags.findIndex((t) => t.toLowerCase() === oldTag.toLowerCase());
+          if (listIdx !== -1) {
+            state.tags[listIdx] = formatted;
+          } else {
+            state.tags.push(formatted);
+          }
+
+          state.videos.forEach((v) => {
+            if (Array.isArray(v.tags)) {
+              v.tags = v.tags.map((vt) => (vt.toLowerCase() === oldTag.toLowerCase() ? formatted : vt));
+            }
+          });
+
+          if (state.activeTagFilter.toLowerCase() === oldTag.toLowerCase()) {
+            state.activeTagFilter = formatted;
+          }
+
+          state.editingTagName = '';
+          renderTagManagerList();
+          renderQuickChipsBar();
+          renderSuggestedTags();
+          renderBoard();
+          showToast(`Tag zu „${formatted}“ geändert.`);
+          await pushStateToCloud();
+        } else if (action === 'delete' && targetTag) {
+          state.tags = state.tags.filter((t) => t !== targetTag);
+          if (state.activeTagFilter.toLowerCase() === targetTag.toLowerCase()) {
+            state.activeTagFilter = '';
+          }
+          if (state.editingTagName.toLowerCase() === targetTag.toLowerCase()) {
+            state.editingTagName = '';
+          }
+          renderTagManagerList();
+          renderQuickChipsBar();
+          renderSuggestedTags();
+          renderBoard();
+          showToast(`Tag „${targetTag}“ entfernt.`);
+          await pushStateToCloud();
+        }
+      });
+
+      container.addEventListener('keydown', async (e) => {
+        if (e.target.id !== 'edit-tag-inline-input') return;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const saveBtn = container.querySelector('button[data-action="save"]');
+          if (saveBtn) saveBtn.click();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          state.editingTagName = '';
+          renderTagManagerList();
+        }
+      });
+    }
+
     window.openTagModal = function () {
+      initTagManagerDelegation();
       state.editingTagName = '';
       renderTagManagerList();
       const modal = document.getElementById('tag-modal');
@@ -2565,65 +2690,8 @@
       modal.classList.remove('flex');
     };
 
-    window.startEditTag = function (tagName) {
-      state.editingTagName = tagName;
-      renderTagManagerList();
-      const editInput = document.getElementById('edit-tag-inline-input');
-      if (editInput) {
-        editInput.focus();
-        editInput.select();
-      }
-    };
-
-    window.cancelEditTag = function () {
-      state.editingTagName = '';
-      renderTagManagerList();
-    };
-
-    window.saveEditedTag = async function (oldTag) {
-      const input = document.getElementById('edit-tag-inline-input');
-      if (!input) return;
-      const formatted = normalizeTag(input.value);
-      if (!formatted) {
-        showToast('Bitte einen gültigen Tag eingeben.', 'error');
-        return;
-      }
-
-      const duplicate = state.tags.some(
-        (t) => t.toLowerCase() === formatted.toLowerCase() && t.toLowerCase() !== oldTag.toLowerCase()
-      );
-      if (duplicate) {
-        showToast('Dieser Tag existiert bereits in der Liste.', 'error');
-        return;
-      }
-
-      const idx = state.tags.findIndex((t) => t.toLowerCase() === oldTag.toLowerCase());
-      if (idx !== -1) {
-        state.tags[idx] = formatted;
-      } else {
-        state.tags.push(formatted);
-      }
-
-      state.videos.forEach((v) => {
-        if (Array.isArray(v.tags)) {
-          v.tags = v.tags.map((vt) => (vt.toLowerCase() === oldTag.toLowerCase() ? formatted : vt));
-        }
-      });
-
-      if (state.activeTagFilter.toLowerCase() === oldTag.toLowerCase()) {
-        state.activeTagFilter = formatted;
-      }
-
-      state.editingTagName = '';
-      renderTagManagerList();
-      renderQuickChipsBar();
-      renderSuggestedTags();
-      renderBoard();
-      showToast(`Tag zu „${formatted}“ geändert.`);
-      await pushStateToCloud();
-    };
-
     function renderTagManagerList() {
+      initTagManagerDelegation();
       const container = document.getElementById('tag-manager-list');
       const sorted = [...state.tags].sort((a, b) => a.localeCompare(b, 'de'));
 
@@ -2633,7 +2701,7 @@
       }
 
       container.innerHTML = sorted
-        .map((tag) => {
+        .map((tag, idx) => {
           const count = state.videos.filter((v) =>
             (v.tags || []).some((vt) => vt.toLowerCase() === tag.toLowerCase())
           ).length;
@@ -2645,19 +2713,20 @@
                   id="edit-tag-inline-input"
                   type="text"
                   value="${escapeHtml(tag)}"
-                  onkeydown="if(event.key==='Enter'){event.preventDefault();saveEditedTag('${escapeHtml(tag)}');}else if(event.key==='Escape'){cancelEditTag();}"
                   class="flex-1 min-w-0 px-2.5 py-1 rounded-lg bg-white border border-indigo-400 text-xs sm:text-sm font-semibold text-indigo-900 focus:outline-none"
                 />
                 <button
                   type="button"
-                  onclick="saveEditedTag('${escapeHtml(tag)}')"
+                  data-action="save"
+                  data-index="${idx}"
                   class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold cursor-pointer shrink-0"
                 >
                   OK
                 </button>
                 <button
                   type="button"
-                  onclick="cancelEditTag()"
+                  data-action="cancel"
+                  data-index="${idx}"
                   class="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium cursor-pointer shrink-0"
                 >
                   Abbruch
@@ -2675,7 +2744,8 @@
               <div class="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
-                  onclick="startEditTag('${escapeHtml(tag)}')"
+                  data-action="edit"
+                  data-index="${idx}"
                   class="text-xs font-medium text-indigo-700 hover:text-indigo-950 px-2 py-1 rounded hover:bg-indigo-50 transition cursor-pointer"
                   title="Tag bearbeiten"
                 >
@@ -2683,7 +2753,8 @@
                 </button>
                 <button
                   type="button"
-                  onclick="deleteTag('${escapeHtml(tag)}')"
+                  data-action="delete"
+                  data-index="${idx}"
                   class="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
                   title="Tag entfernen"
                 >
@@ -2713,22 +2784,6 @@
       renderQuickChipsBar();
       renderSuggestedTags();
       showToast(`Tag „${formatted}“ gespeichert.`);
-      await pushStateToCloud();
-    };
-
-    window.deleteTag = async function (tagName) {
-      state.tags = state.tags.filter((t) => t !== tagName);
-      if (state.activeTagFilter.toLowerCase() === tagName.toLowerCase()) {
-        state.activeTagFilter = '';
-      }
-      if (state.editingTagName.toLowerCase() === tagName.toLowerCase()) {
-        state.editingTagName = '';
-      }
-      renderTagManagerList();
-      renderQuickChipsBar();
-      renderSuggestedTags();
-      renderBoard();
-      showToast(`Tag „${tagName}“ entfernt.`);
       await pushStateToCloud();
     };
 
@@ -2827,6 +2882,8 @@
       enableDragToScroll('category-filter-bar');
       enableDragToScroll('pro-chips-bar');
       enableDragToScroll('tag-chips-bar');
+      initSubtopicManagerDelegation();
+      initTagManagerDelegation();
       initFirebaseSync();
     });
   </script>
