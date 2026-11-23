@@ -215,7 +215,7 @@
             <button
               onclick="openTagModal()"
               id="desktop-tags-btn"
-              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold transition cursor-pointer"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold transition cursor-pointer"
               title="Tags separat erfassen & verwalten"
             >
               <span class="text-indigo-600 font-extrabold">#</span>
@@ -505,7 +505,7 @@
         <!-- Zeile 5: Tags Eingabe -->
         <div>
           <label for="input-tag-field" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-            4. Tags zum Video (Komma oder Enter zum Hinzufügen)
+            4. Tags zum Video (Komma oder Enter zum Hinzufügen, × zum Entfernen)
           </label>
           <div class="p-2 rounded-xl bg-slate-50 border border-slate-300 focus-within:bg-white focus-within:border-emerald-500">
             <div id="modal-tags-list" class="flex flex-wrap gap-1.5 mb-1.5 empty:hidden"></div>
@@ -513,7 +513,7 @@
               id="input-tag-field"
               type="text"
               onkeydown="handleTagKeydown(event)"
-              placeholder="z. B. Driver, Takeaway, Impact..."
+              placeholder="z. B. Slice, SpiegelDrill, Tempo..."
               class="w-full bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
             />
           </div>
@@ -935,7 +935,7 @@
         pro: 'Kerrod Gray',
         title: 'How to Correctly Aim in Golf | The PERFECT Golf Alignment Routine',
         url: 'https://www.youtube.com/watch?v=9L4h_Z1tF4k',
-        tags: ['#Alignment', '#KerrodGray'],
+        tags: ['#Alignment'],
         analysis:
           'Kerrod Gray zeigt bei (01:10), wie du ein klares Zwischenziel (Intermediate Target) wählst. Danach richtest du zuerst die Schlagfläche exakt aus und setzt Stand sowie Schultern parallel dazu (03:15).',
         detailedAnalysis: '',
@@ -948,7 +948,7 @@
         pro: 'Michael Alexander',
         title: 'Der Golfgriff, den niemand lehrt – und warum er alles verändert',
         url: 'https://www.youtube.com/watch?v=64oA-1gK7A0',
-        tags: ['#Grip', '#MichaelAlexander'],
+        tags: ['#Grip'],
         analysis:
           'Der Schläger wird diagonal durch die Finger der linken Hand gelegt, sodass bei (01:45) etwa zwei bis zweieinhalb Knöchel sichtbar sind. Das ermöglicht eine freie Handgelenksbewegung und konstanten Schlagflächenkontakt (05:20).',
         detailedAnalysis: '',
@@ -961,7 +961,7 @@
         pro: 'Danny Maude',
         title: 'What Nobody Tells You About How To Hit Driver Straight',
         url: 'https://www.youtube.com/watch?v=xQ4d98Z2_1U',
-        tags: ['#Driver', '#Takeaway', '#DannyMaude'],
+        tags: ['#Driver', '#Takeaway'],
         analysis:
           'Danny Maude betont bei (00:15) den leichten Aufwärtstreffwinkel beim Driver im Gegensatz zu den Eisen. Eine saubere Schlagflächenkontrolle im Rück- und Abschwung (04:05) verhindert Slice und Hook.',
         detailedAnalysis: '',
@@ -1020,6 +1020,7 @@
     let auth = null;
     let firebaseUser = null;
     let unsubscribeSnapshot = null;
+    let lastLocalMutationAt = 0;
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'golf-master-app';
 
     function normalizeSubtopicsList(rawList, legacyMap = null) {
@@ -1041,14 +1042,11 @@
           });
         }
       }
-      if (!unique.some((u) => u.toLowerCase() === 'compression')) {
-        unique.push('Compression');
-      }
       return unique;
     }
 
     function getAllSubtopics() {
-      const list = Array.isArray(state.subtopics) ? [...state.subtopics] : buildDefaultSubtopicsList();
+      const list = Array.isArray(state.subtopics) ? [...state.subtopics] : [];
       state.videos.forEach((v) => {
         const clean = String(v.subtopic || '').trim();
         if (clean && !list.some((s) => s.toLowerCase() === clean.toLowerCase())) {
@@ -1093,9 +1091,9 @@
         state.pros = parsedPros;
         state.tags = savedTags ? JSON.parse(savedTags) : [...DEFAULT_TAGS];
 
-        if (savedSubtopics) {
+        if (savedSubtopics !== null) {
           state.subtopics = normalizeSubtopicsList(JSON.parse(savedSubtopics));
-        } else if (legacySubtopics) {
+        } else if (legacySubtopics !== null) {
           state.subtopics = normalizeSubtopicsList(null, JSON.parse(legacySubtopics));
         } else {
           state.subtopics = buildDefaultSubtopicsList();
@@ -1164,6 +1162,10 @@
         async (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
+            const remoteUpdatedMs = data.updatedAt ? Date.parse(data.updatedAt) : 0;
+            if (lastLocalMutationAt && remoteUpdatedMs && remoteUpdatedMs < lastLocalMutationAt) {
+              return;
+            }
             if (Array.isArray(data.videos)) state.videos = data.videos;
             if (Array.isArray(data.pros)) state.pros = data.pros;
             if (Array.isArray(data.tags)) state.tags = data.tags;
@@ -1187,6 +1189,7 @@
     }
 
     async function pushStateToCloud() {
+      lastLocalMutationAt = Date.now();
       saveLocalFallback();
       if (!db || !firebaseUser) {
         updateSyncStatus('offline', 'Lokal gespeichert');
@@ -1198,7 +1201,7 @@
         const vaultDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'golf_vaults', state.vaultCode);
         await setDoc(vaultDocRef, {
           vaultCode: state.vaultCode,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(lastLocalMutationAt).toISOString(),
           pros: state.pros,
           tags: state.tags,
           subtopics: state.subtopics,
@@ -2066,7 +2069,7 @@
           (tag, idx) => `
           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-800 border border-indigo-200 text-xs font-semibold">
             ${escapeHtml(tag)}
-            <button type="button" onclick="removeModalTag(${idx})" class="hover:text-indigo-950 ml-0.5 cursor-pointer">&times;</button>
+            <button type="button" onclick="removeModalTag(${idx})" title="Tag von diesem Video entfernen" class="hover:text-red-700 font-bold ml-0.5 cursor-pointer">&times;</button>
           </span>
         `
         )
@@ -2193,11 +2196,6 @@
           state.tags.push(t);
         }
       });
-
-      const proTag = normalizeTag(pro);
-      if (proTag && !tags.some((t) => t.toLowerCase() === proTag.toLowerCase())) {
-        tags.push(proTag);
-      }
 
       if (editId) {
         const idx = state.videos.findIndex((v) => v.id === editId);
@@ -2364,6 +2362,7 @@
           });
 
           state.editingSubtopicName = '';
+          saveLocalFallback();
           renderSubtopicManagerList();
           renderBoard();
           showToast(`Sub-Topic zu „${newName}“ geändert.`);
@@ -2372,10 +2371,17 @@
           state.subtopics = state.subtopics.filter(
             (s) => s.toLowerCase() !== targetName.toLowerCase()
           );
+          state.videos.forEach((v) => {
+            if ((v.subtopic || '').toLowerCase() === targetName.toLowerCase()) {
+              v.subtopic = '';
+            }
+          });
           if (state.editingSubtopicName.toLowerCase() === targetName.toLowerCase()) {
             state.editingSubtopicName = '';
           }
+          saveLocalFallback();
           renderSubtopicManagerList();
+          renderBoard();
           showToast(`Sub-Topic „${targetName}“ entfernt.`);
           await pushStateToCloud();
         }
@@ -2505,6 +2511,7 @@
 
       state.subtopics.push(name);
       input.value = '';
+      saveLocalFallback();
       renderSubtopicManagerList();
       showToast(`Sub-Topic „${name}“ gespeichert.`);
       await pushStateToCloud();
@@ -2644,6 +2651,11 @@
           await pushStateToCloud();
         } else if (action === 'delete' && targetTag) {
           state.tags = state.tags.filter((t) => t !== targetTag);
+          state.videos.forEach((v) => {
+            if (Array.isArray(v.tags)) {
+              v.tags = v.tags.filter((vt) => vt.toLowerCase() !== targetTag.toLowerCase());
+            }
+          });
           if (state.activeTagFilter.toLowerCase() === targetTag.toLowerCase()) {
             state.activeTagFilter = '';
           }
