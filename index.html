@@ -875,7 +875,7 @@
         textColor: '#0f172a',
         badgeBg: '#be123c',
         badgeText: '#ffffff',
-        subtopics: ['Driver', 'Eisen', 'Fairwayholz', 'Short Game', 'Green']
+        subtopics: ['Driver', 'Eisen', 'Fairwayholz', 'Short Game', 'Green', 'Bunker']
       },
       {
         id: 'driver',
@@ -884,7 +884,7 @@
         textColor: '#0f172a',
         badgeBg: '#475569',
         badgeText: '#ffffff',
-        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish']
+        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish', 'Compression']
       },
       {
         id: 'eisen',
@@ -893,7 +893,7 @@
         textColor: '#0f172a',
         badgeBg: '#475569',
         badgeText: '#ffffff',
-        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish']
+        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish', 'Compression']
       },
       {
         id: 'fairwayholz',
@@ -902,7 +902,7 @@
         textColor: '#0f172a',
         badgeBg: '#475569',
         badgeText: '#ffffff',
-        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish']
+        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish', 'Compression']
       },
       {
         id: 'short_game',
@@ -921,6 +921,15 @@
         badgeBg: '#047857',
         badgeText: '#ffffff',
         subtopics: ['Putting (Grüns lesen, Längenkontrolle)']
+      },
+      {
+        id: 'bunker',
+        name: 'Bunker',
+        color: 'rgba(74, 222, 128, 0.5)',
+        textColor: '#0f172a',
+        badgeBg: '#15803d',
+        badgeText: '#ffffff',
+        subtopics: ['Greenside Bunker', 'Fairway Bunker', 'Explosion Shot']
       }
     ];
 
@@ -934,6 +943,9 @@
           }
         });
       });
+      if (!list.some((u) => u.toLowerCase() === 'compression')) {
+        list.push('Compression');
+      }
       return list;
     }
 
@@ -1073,6 +1085,9 @@
             if (Array.isArray(arr)) arr.forEach(addOne);
           });
         }
+      }
+      if (!unique.some((u) => u.toLowerCase() === 'compression')) {
+        unique.push('Compression');
       }
       return unique;
     }
