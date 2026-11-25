@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GOLF MASTER – Video & Schwung-Analyse</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    /* Heller Hintergrund mit dezentem Punktgitter */
+    body {
+      background-color: #f4f6f8;
+      background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: #0f172a;
+    }
+
+    /* Schöne Scrollbars */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #eef2f6;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .slide-track {
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      cursor: grab;
+    }
+    .slide-track:active {
+      cursor: grabbing;
+    }
+
+    .draggable-header {
+      cursor: grab;
+      user-select: none;
+    }
+    .draggable-header:active {
+      cursor: grabbing;
+    }
+
+    mark.search-hit {
+      background-color: #fef08a;
+      color: #0f172a;
+      padding: 0 2px;
+      border-radius: 3px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-emerald-500/20 selection:text-emerald-900">
+
+  <!-- Toast-Benachrichtigung -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Top Navigation & Kontrollzentrum -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5">
+        
+        <!-- Logo, Zähler & Live-Sync-Status -->
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center shadow-sm border border-emerald-500/20 shrink-0">
+              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 18V3l7 4-7 4" />
+                <circle cx="12" cy="18" r="3" />
+                <path d="M5 21h14" />
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-slate-900">GOLF MASTER</h1>
+                <span id="video-count-badge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                  0 Videos
+                </span>
+                <!-- Range-Merkliste / Fokus Filter-Button -->
+                <button
+                  onclick="toggleRangeFocusFilter()"
+                  id="range-focus-btn"
+                  title="Nur Videos aus deiner Range-Merkliste anzeigen"
+                  class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition cursor-pointer bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100"
+                >
+                  <span>📌</span>
+                  <span>Range-Fokus</span>
+                  <span id="range-focus-count" class="px-1.5 py-0.2 rounded-full bg-white/80 text-amber-950 text-[10px] font-extrabold">0</span>
+                </button>
+                <!-- Sync Status Pill -->
+                <button
+                  onclick="openSyncModal()"
+                  id="sync-status-btn"
+                  title="Cloud-Sync, iCloud-Import & iPhone-Link verwalten"
+                  class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200/70 transition cursor-pointer"
+                >
+                  <span id="sync-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                  <span id="sync-status-text">Lokal gespeichert</span>
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-500 hidden sm:block">Dein persönliches Schwung- & Video-Board (Mac ↔ iPhone Sync)</p>
+            </div>
+          </div>
+
+          <!-- Mobile Controls (Lesemodus Toggle, Sync/Import & Neu) -->
+          <div class="flex lg:hidden items-center gap-1.5 shrink-0">
+            <button
+              onclick="toggleReadOnlyMode()"
+              id="mobile-readonly-btn"
+              title="Zwischen Lesemodus und Bearbeiten wechseln"
+              class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span id="mobile-readonly-icon">👁️</span>
+              <span id="mobile-readonly-label">Lesemodus</span>
+            </button>
+
+            <button
+              onclick="openSyncModal()"
+              id
