@@ -1,0 +1,3620 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GOLF MASTER – Video & Schwung-Analyse</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    /* Heller Hintergrund mit dezentem Punktgitter */
+    body {
+      background-color: #f4f6f8;
+      background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: #0f172a;
+    }
+
+    /* Schöne Scrollbars */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #eef2f6;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .slide-track {
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      cursor: grab;
+    }
+    .slide-track:active {
+      cursor: grabbing;
+    }
+
+    .draggable-header {
+      cursor: grab;
+      user-select: none;
+    }
+    .draggable-header:active {
+      cursor: grabbing;
+    }
+
+    mark.search-hit {
+      background-color: #fef08a;
+      color: #0f172a;
+      padding: 0 2px;
+      border-radius: 3px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-emerald-500/20 selection:text-emerald-900">
+
+  <!-- Toast-Benachrichtigung -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Top Navigation & Kontrollzentrum -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5">
+        
+        <!-- Logo, Zähler & Live-Sync-Status -->
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center shadow-sm border border-emerald-500/20 shrink-0">
+              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 18V3l7 4-7 4" />
+                <circle cx="12" cy="18" r="3" />
+                <path d="M5 21h14" />
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-slate-900">GOLF MASTER</h1>
+                <span id="video-count-badge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                  0 Videos
+                </span>
+                <!-- Range-Merkliste / Fokus Filter-Button -->
+                <button
+                  onclick="toggleRangeFocusFilter()"
+                  id="range-focus-btn"
+                  title="Nur Videos aus deiner Range-Merkliste anzeigen"
+                  class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition cursor-pointer bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100"
+                >
+                  <span>📌</span>
+                  <span>Range-Fokus</span>
+                  <span id="range-focus-count" class="px-1.5 py-0.2 rounded-full bg-white/80 text-amber-950 text-[10px] font-extrabold">0</span>
+                </button>
+                <!-- Sync Status Pill -->
+                <button
+                  onclick="openSyncModal()"
+                  id="sync-status-btn"
+                  title="Cloud-Sync, iCloud-Import & iPhone-Link verwalten"
+                  class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200/70 transition cursor-pointer"
+                >
+                  <span id="sync-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                  <span id="sync-status-text">Lokal gespeichert</span>
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-500 hidden sm:block">Dein persönliches Schwung- & Video-Board (Mac ↔ iPhone Sync)</p>
+            </div>
+          </div>
+
+          <!-- Mobile Controls (Lesemodus Toggle, Sync/Import & Neu) -->
+          <div class="flex lg:hidden items-center gap-1.5 shrink-0">
+            <button
+              onclick="toggleReadOnlyMode()"
+              id="mobile-readonly-btn"
+              title="Zwischen Lesemodus und Bearbeiten wechseln"
+              class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span id="mobile-readonly-icon">👁️</span>
+              <span id="mobile-readonly-label">Lesemodus</span>
+            </button>
+
+            <button
+              onclick="openSyncModal()"
+              id="mobile-sync-btn"
+              title="Sync & JSON Import/Export"
+              aria-label="Sync und JSON Import"
+              class="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-xs font-semibold text-emerald-800 flex items-center gap-1 transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              <span>Sync</span>
+            </button>
+
+            <button
+              onclick="openVideoModal()"
+              id="mobile-add-btn"
+              class="hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              <span>Neu</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Suchfeld & Desktop Aktionen -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 lg:max-w-3xl lg:justify-end">
+          
+          <!-- Live Suchfeld -->
+          <div class="relative flex-1 max-w-md">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.3-4.3"/>
+            </svg>
+            <input
+              id="search-input"
+              type="text"
+              placeholder="Suche nach Pro, #Tag, Schwungphase oder Analyse..."
+              class="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+            />
+            <button
+              id="clear-search-btn"
+              onclick="clearSearch()"
+              title="Suche löschen"
+              class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <!-- Desktop Action Buttons -->
+          <div class="hidden lg:flex items-center gap-1.5">
+            <!-- Lesemodus / Bearbeiten Toggle -->
+            <button
+              onclick="toggleReadOnlyMode()"
+              id="desktop-readonly-btn"
+              title="Zwischen Bearbeiten-Modus (Mac) und Lesemodus (iPhone) wechseln"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 transition cursor-pointer"
+            >
+              <span id="desktop-readonly-icon">✏️</span>
+              <span id="desktop-readonly-label">Bearbeiten</span>
+            </button>
+
+            <button
+              onclick="openVideoModal()"
+              id="desktop-add-btn"
+              class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            >
+              <span>Neues Video</span>
+            </button>
+
+            <button
+              onclick="openProModal()"
+              id="desktop-pros-btn"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold transition cursor-pointer"
+              title="Pros im Dropdown verwalten"
+            >
+              <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>Pros</span>
+            </button>
+
+            <button
+              onclick="openSubtopicModal()"
+              id="desktop-subtopics-btn"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 transition cursor-pointer"
+              title="Sub-Topics erfassen & verwalten"
+            >
+              <span class="text-emerald-700 font-extrabold">▾</span>
+              <span>Sub-Topics</span>
+            </button>
+
+            <button
+              onclick="openTagModal()"
+              id="desktop-tags-btn"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold transition cursor-pointer"
+              title="Tags separat erfassen & verwalten"
+            >
+              <span class="text-indigo-600 font-extrabold">#</span>
+              <span>Tags</span>
+            </button>
+
+            <button
+              onclick="openSyncModal()"
+              title="Sync-Tresor & JSON Backup"
+              class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slidable Topic-Filterleiste -->
+      <div class="mt-2.5 pt-2.5 border-t border-slate-200/80 flex items-center gap-1.5">
+        <button
+          type="button"
+          onclick="slideContainer('category-filter-bar', -260)"
+          title="Nach links sliden"
+          aria-label="Topics nach links sliden"
+          class="hidden sm:inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 shrink-0 cursor-pointer"
+        >
+          ‹
+        </button>
+        <div
+          id="category-filter-bar"
+          class="slide-track flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5"
+        ></div>
+        <button
+          type="button"
+          onclick="slideContainer('category-filter-bar', 260)"
+          title="Nach rechts sliden"
+          aria-label="Topics nach rechts sliden"
+          class="hidden sm:inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 shrink-0 cursor-pointer"
+        >
+          ›
+        </button>
+      </div>
+
+      <!-- Zeile 1: Slidable Schnellfilter-Chips für Pros -->
+      <div class="mt-2 flex items-center gap-1.5">
+        <button
+          type="button"
+          onclick="slideContainer('pro-chips-bar', -240)"
+          title="Pros nach links sliden"
+          aria-label="Pros nach links sliden"
+          class="hidden sm:inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs shrink-0 cursor-pointer"
+        >
+          ‹
+        </button>
+        <div
+          id="pro-chips-bar"
+          class="slide-track flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5"
+        ></div>
+        <button
+          type="button"
+          onclick="slideContainer('pro-chips-bar', 240)"
+          title="Pros nach rechts sliden"
+          aria-label="Pros nach rechts sliden"
+          class="hidden sm:inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs shrink-0 cursor-pointer"
+        >
+          ›
+        </button>
+      </div>
+
+      <!-- Zeile 2: Slidable Schnellfilter-Chips für Tags (unter den Pros) -->
+      <div class="mt-1.5 flex items-center gap-1.5">
+        <button
+          type="button"
+          onclick="slideContainer('tag-chips-bar', -240)"
+          title="Tags nach links sliden"
+          aria-label="Tags nach links sliden"
+          class="hidden sm:inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs shrink-0 cursor-pointer"
+        >
+          ‹
+        </button>
+        <div
+          id="tag-chips-bar"
+          class="slide-track flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5"
+        ></div>
+        <button
+          type="button"
+          onclick="slideContainer('tag-chips-bar', 240)"
+          title="Tags nach rechts sliden"
+          aria-label="Tags nach rechts sliden"
+          class="hidden sm:inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 text-xs shrink-0 cursor-pointer"
+        >
+          ›
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hauptbereich: Aktive Filter & Board-Karten -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-5">
+    
+    <!-- Aktive Filteranzeige -->
+    <div id="active-filters-bar" class="hidden mb-4 flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 shadow-xs">
+      <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+        <span class="text-slate-500 font-medium">Aktive Filter:</span>
+        <div id="active-filter-pills" class="flex flex-wrap items-center gap-1.5"></div>
+      </div>
+      <button onclick="resetAllFilters()" class="text-xs font-semibold text-emerald-700 hover:text-emerald-600 underline cursor-pointer">
+        Alle Filter zurücksetzen
+      </button>
+    </div>
+
+    <!-- Container für die Kategorien & Video-Karten -->
+    <div id="board-content" class="space-y-6"></div>
+
+    <!-- Leerzustand bei keinen Suchtreffern -->
+    <div id="empty-state" class="hidden text-center py-12 px-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+      <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.3-4.3"/></svg>
+      </div>
+      <h3 class="text-base font-bold text-slate-900 mb-1">Keine passenden Einträge gefunden</h3>
+      <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-4">
+        Für deine aktuelle Suche oder Filterauswahl gibt es noch kein Video. Passe die Suche an oder füge ein neues Video hinzu.
+      </p>
+      <div class="flex items-center justify-center gap-2.5">
+        <button onclick="resetAllFilters()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-800 transition cursor-pointer">
+          Filter zurücksetzen
+        </button>
+        <button id="empty-add-btn" onclick="openVideoModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer">
+          + Neues Video anlegen
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: VIDEO HINZUFÜGEN / ÜBERSICHT BEARBEITEN                      -->
+  <!-- ===================================================================== -->
+  <div id="video-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/35 p-3 sm:p-4 overflow-y-auto pointer-events-none">
+    <div data-draggable-panel class="pointer-events-auto bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto">
+      
+      <div data-drag-handle class="draggable-header px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-slate-400 text-xs" title="Fenster mit Maus verschieben">⋮⋮</span>
+          <h2 id="video-modal-title" class="text-base sm:text-lg font-bold text-slate-900 truncate">Neues Video anlegen</h2>
+        </div>
+        <button type="button" onclick="requestCloseVideoModal()" title="Schließen" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form id="video-form" onsubmit="saveVideo(event)" class="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
+        <input type="hidden" id="edit-video-id" />
+
+        <!-- Zeile 1: Kategorie & Mehrfach-Sub-Topics -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="input-category" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              Bereich / Topic *
+            </label>
+            <select
+              id="input-category"
+              required
+              class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500"
+            ></select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              Sub-Topics (mehrere wählbar) *
+            </label>
+            <div id="input-subtopics-checklist" class="max-h-36 overflow-y-auto p-2 rounded-xl bg-slate-50 border border-slate-300 space-y-1"></div>
+            <div class="mt-2 flex items-center gap-2">
+              <input
+                id="input-subtopic-custom"
+                type="text"
+                placeholder="Eigenes Sub-Topic hinzufügen..."
+                class="flex-1 min-w-0 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+              />
+              <button
+                type="button"
+                onclick="addCustomSubtopicToSelection()"
+                class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition cursor-pointer shrink-0"
+              >
+                + Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zeile 2: Pro Drop-Down -->
+        <div>
+          <label for="input-pro" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            1. Golf-Pro auswählen *
+          </label>
+          <select
+            id="input-pro"
+            required
+            class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500"
+          ></select>
+        </div>
+
+        <!-- Zeile 3: YouTube Hyperlink + Live Thumbnail-Vorschau -->
+        <div>
+          <label for="input-url" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            2. YouTube-Hyperlink zum Video *
+          </label>
+          <input
+            id="input-url"
+            type="url"
+            oninput="previewYoutubeUrl()"
+            placeholder="https://www.youtube.com/watch?v=... oder https://youtu.be/..."
+            required
+            class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+          />
+
+          <div id="yt-preview-box" class="hidden mt-2 flex items-center gap-3 p-2 rounded-xl bg-slate-50 border border-slate-200">
+            <img id="yt-preview-img" src="" alt="YouTube Vorschau" class="w-20 h-12 object-cover rounded-lg border border-slate-200" />
+            <div class="text-xs text-slate-700">
+              <span class="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                YouTube-Video erkannt
+              </span>
+              <p class="text-slate-500 mt-0.5">Vorschaubild wird automatisch geladen.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video Titel (Mussfeld) -->
+        <div>
+          <label for="input-title" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            Video-Titel *
+          </label>
+          <input
+            id="input-title"
+            type="text"
+            required
+            placeholder="z. B. Driver Swing Fundamentals"
+            class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+          />
+        </div>
+
+        <!-- Punkt 3: Ausführliche Analyse (grün & editierbar) -->
+        <div>
+          <label for="input-detailed-analysis" class="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">
+            3. AUSFÜHRLICHE ANALYSE <span class="text-emerald-700 font-normal normal-case">(optional – Zusammenfassung &amp; Zeitmarken wie 01:10)</span>
+          </label>
+          <textarea
+            id="input-detailed-analysis"
+            rows="4"
+            placeholder="Zusammenfassung des Videos, Kernaussagen, Schlägerwahl &amp; wichtige Time-Stamps (z. B. 01:10)..."
+            class="w-full px-3 py-2 rounded-xl bg-emerald-50/70 border border-emerald-300 text-sm text-slate-900 placeholder-emerald-800/55 focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 leading-relaxed"
+          ></textarea>
+        </div>
+
+        <!-- Punkt 4 (neu): Persönliche Anmerkungen (editierbar) -->
+        <div>
+          <label for="input-personal-notes" class="block text-xs font-bold uppercase tracking-wider text-amber-900 mb-1">
+            4. PERSÖNLICHE ANMERKUNGEN <span class="text-slate-500 font-normal normal-case">(optional – z. B. Kapitel &amp; Time-Stamps wie Pitch / downslope – 01:00)</span>
+          </label>
+          <textarea
+            id="input-personal-notes"
+            rows="4"
+            placeholder="z. B. Kapitel-Index mit Zeitmarken (Pitch / downslope – 01:00, Chip / below the feet – 09:00) oder Range-Merkpunkte..."
+            class="w-full px-3 py-2 rounded-xl bg-amber-50/50 border border-amber-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 leading-relaxed"
+          ></textarea>
+        </div>
+
+        <!-- Punkt 5: Bilder-Upload (Thumbnails auf der Karte, Großansicht bei Klick) -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label for="input-images" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              5. Bilder hochladen (Thumbnails auf der Karte)
+            </label>
+            <span class="text-[11px] text-slate-500">Klick auf Bild = Großansicht</span>
+          </div>
+          <label
+            for="input-images"
+            class="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 text-xs font-semibold text-slate-700 cursor-pointer transition"
+          >
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span>Bilder auswählen (JPG, PNG, WEBP)</span>
+            <input
+              id="input-images"
+              type="file"
+              accept="image/*"
+              multiple
+              onchange="handleImageUpload(event)"
+              class="hidden"
+            />
+          </label>
+          <div id="modal-images-list" class="mt-2.5 flex flex-wrap gap-2 empty:hidden"></div>
+        </div>
+
+        <!-- Punkt 6: Tags Eingabe -->
+        <div>
+          <label for="input-tag-field" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            6. Tags zum Video (Komma oder Enter zum Hinzufügen, × zum Entfernen)
+          </label>
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-300 focus-within:bg-white focus-within:border-emerald-500">
+            <div id="modal-tags-list" class="flex flex-wrap gap-1.5 mb-1.5 empty:hidden"></div>
+            <input
+              id="input-tag-field"
+              type="text"
+              onkeydown="handleTagKeydown(event)"
+              placeholder="z. B. Slice, SpiegelDrill, Tempo..."
+              class="w-full bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
+            />
+          </div>
+          <div class="mt-1.5 flex flex-wrap items-center gap-1.5" id="suggested-tags-container"></div>
+        </div>
+
+        <!-- Formular Buttons -->
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+          <button
+            type="button"
+            onclick="requestCloseVideoModal()"
+            class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-700 transition cursor-pointer"
+          >
+            Abbrechen
+          </button>
+          <button
+            type="submit"
+            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white shadow-sm transition cursor-pointer"
+          >
+            Speichern
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: SYNC-TRESOR & BACKUP EINSTELLUNGEN                           -->
+  <!-- ===================================================================== -->
+  <div id="sync-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/35 p-3 sm:p-4 overflow-y-auto pointer-events-none">
+    <div data-draggable-panel class="pointer-events-auto bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-auto">
+      <div data-drag-handle class="draggable-header px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-slate-400 text-xs" title="Fenster mit Maus verschieben">⋮⋮</span>
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 truncate">Sync & JSON Backup</h2>
+        </div>
+        <button type="button" onclick="closeSyncModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed">
+          <strong>Sync & iCloud-Backup:</strong> Exportiere am Mac deine Daten als <strong>.json</strong> in <strong>iCloud Drive</strong> und lade sie auf dem iPhone über <strong>JSON Importieren</strong> ein.
+        </div>
+
+        <!-- Tresor-Code Eingabe -->
+        <div>
+          <label for="vault-code-input" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            Persönlicher Sync-Tresor-Code
+          </label>
+          <form onsubmit="changeVaultCode(event)" class="flex gap-2">
+            <input
+              id="vault-code-input"
+              type="text"
+              required
+              minlength="4"
+              placeholder="z. B. golf-master-2026"
+              class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm font-mono text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500"
+            />
+            <button
+              type="submit"
+              class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer"
+            >
+              Verbinden
+            </button>
+          </form>
+        </div>
+
+        <!-- Direktlink für iPhone kopieren -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            Direkt-URL für dein iPhone
+          </label>
+          <div class="flex gap-2">
+            <input
+              id="iphone-share-url"
+              type="text"
+              readonly
+              class="flex-1 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700 focus:outline-none"
+            />
+            <button
+              type="button"
+              onclick="copyShareUrl()"
+              class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-xs font-semibold text-slate-800 transition cursor-pointer shrink-0"
+            >
+              Link kopieren
+            </button>
+          </div>
+        </div>
+
+        <!-- Manuelles JSON Backup -->
+        <div class="pt-3 border-t border-slate-200">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">JSON Backup (iCloud Drive / Lokal)</p>
+          <div class="flex items-center gap-2.5">
+            <button
+              type="button"
+              onclick="exportData()"
+              class="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span>JSON Exportieren</span>
+            </button>
+            <label
+              class="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-800 flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+              <span>JSON Importieren</span>
+              <input type="file" id="import-file-input" accept=".json,application/json,text/plain,*/*" class="hidden" onchange="importData(event)" />
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3: PROS VERWALTEN                                               -->
+  <!-- ===================================================================== -->
+  <div id="pro-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/35 p-3 sm:p-4 pointer-events-none">
+    <div data-draggable-panel class="pointer-events-auto bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div data-drag-handle class="draggable-header px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-slate-400 text-xs" title="Fenster mit Maus verschieben">⋮⋮</span>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 truncate">Golf-Pros verwalten</h2>
+        </div>
+        <button type="button" onclick="closeProModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <form onsubmit="addProFromManager(event)" class="flex gap-2">
+          <input
+            id="manager-pro-input"
+            type="text"
+            required
+            placeholder="Neuer Pro-Name (z. B. Pete Cowen)"
+            class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+          />
+          <button type="submit" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer">
+            + Hinzufügen
+          </button>
+        </form>
+
+        <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50" id="pro-manager-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3A: SUB-TOPICS VERWALTEN                                        -->
+  <!-- ===================================================================== -->
+  <div id="subtopic-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/35 p-3 sm:p-4 pointer-events-none">
+    <div data-draggable-panel class="pointer-events-auto bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div data-drag-handle class="draggable-header px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-slate-400 text-xs" title="Fenster mit Maus verschieben">⋮⋮</span>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 truncate">Sub-Topic erfassen und verwalten</h2>
+        </div>
+        <button type="button" onclick="closeSubtopicModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <form onsubmit="addSubtopicFromManager(event)" class="flex gap-2">
+          <input
+            id="manager-subtopic-input"
+            type="text"
+            required
+            placeholder="Neues Sub-Topic (z. B. Ballflugkontrolle)"
+            class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500"
+          />
+          <button type="submit" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer">
+            + Hinzufügen
+          </button>
+        </form>
+
+        <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50" id="subtopic-manager-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3B: TAGS SEPARAT VERWALTEN                                      -->
+  <!-- ===================================================================== -->
+  <div id="tag-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/35 p-3 sm:p-4 pointer-events-none">
+    <div data-draggable-panel class="pointer-events-auto bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div data-drag-handle class="draggable-header px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-slate-400 text-xs" title="Fenster mit Maus verschieben">⋮⋮</span>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 truncate">Tags erfassen und verwalten</h2>
+        </div>
+        <button type="button" onclick="closeTagModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <form onsubmit="addTagFromManager(event)" class="flex gap-2">
+          <input
+            id="manager-tag-input"
+            type="text"
+            required
+            placeholder="Neuer Tag (z. B. Rotation oder Bunkerschlag)"
+            class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500"
+          />
+          <button type="submit" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs sm:text-sm font-semibold text-white transition cursor-pointer">
+            + Hinzufügen
+          </button>
+        </form>
+
+        <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50" id="tag-manager-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 4: VIDEO PLAYER PREVIEW                                         -->
+  <!-- ===================================================================== -->
+  <div id="player-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/55 p-3 sm:p-4 pointer-events-none">
+    <div data-draggable-panel class="pointer-events-auto bg-white border border-slate-200 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden">
+      <div data-drag-handle class="draggable-header px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2 min-w-0 pr-3">
+          <span class="text-slate-400 text-xs shrink-0" title="Fenster mit Maus verschieben">⋮⋮</span>
+          <div class="min-w-0">
+            <p id="player-modal-pro" class="text-xs font-semibold text-emerald-700 truncate"></p>
+            <h3 id="player-modal-title" class="text-sm font-bold text-slate-900 truncate"></h3>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a id="player-external-link" href="#" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-semibold text-slate-800 transition">
+            YouTube ↗
+          </a>
+          <button type="button" onclick="closePlayerModal()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="aspect-video w-full bg-black">
+        <iframe
+          id="player-iframe"
+          class="w-full h-full"
+          src=""
+          title="YouTube Video Player"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 5: LÖSCH- / UNGESICHERTE-ÄNDERUNGEN-BESTÄTIGUNG                 -->
+  <!-- ===================================================================== -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+    <div data-draggable-panel class="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-5 shadow-2xl">
+      <div data-drag-handle class="draggable-header flex items-center gap-2 mb-1.5">
+        <span class="text-slate-400 text-xs" title="Fenster mit Maus verschieben">⋮⋮</span>
+        <h3 id="confirm-modal-title" class="text-base font-bold text-slate-900">Eintrag wirklich löschen?</h3>
+      </div>
+      <p id="confirm-modal-text" class="text-xs sm:text-sm text-slate-600 mb-4">Dieser Vorgang kann nicht rückgängig gemacht werden.</p>
+      <div id="confirm-modal-actions" class="flex justify-end gap-2">
+        <button type="button" onclick="closeConfirmModal()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-800 cursor-pointer">
+          Abbrechen
+        </button>
+        <button type="button" id="confirm-delete-btn" class="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs sm:text-sm font-semibold text-white cursor-pointer">
+          Löschen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 6: BILD-GROSSANSICHT (LIGHTBOX)                                 -->
+  <!-- ===================================================================== -->
+  <div id="image-lightbox-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/65 p-3 sm:p-6 pointer-events-none">
+    <div data-draggable-panel class="pointer-events-auto bg-white border border-slate-200 rounded-2xl max-w-4xl w-full max-h-[90vh] shadow-2xl overflow-hidden flex flex-col">
+      <div data-drag-handle class="draggable-header px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2 min-w-0 pr-3">
+          <span class="text-slate-400 text-xs shrink-0" title="Fenster mit Maus verschieben">⋮⋮</span>
+          <span id="lightbox-caption" class="text-xs sm:text-sm font-bold text-slate-900 truncate">Bildansicht</span>
+        </div>
+        <button type="button" onclick="closeImageLightbox()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition cursor-pointer shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-3 sm:p-4 bg-slate-900/5 flex-1 overflow-auto flex items-center justify-center">
+        <img id="lightbox-img" src="" alt="Vergrößertes Bild" class="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-md" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- FIREBASE + APPLICATION LOGIC                                          -->
+  <!-- ===================================================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // =========================================================================
+    // 1. TOPICS, FREEFORM-FARBEN & SUB-TOPICS
+    // =========================================================================
+    const CATEGORIES = [
+      {
+        id: 'basics',
+        name: 'Basics',
+        color: '#fda4af',
+        textColor: '#0f172a',
+        badgeBg: '#be123c',
+        badgeText: '#ffffff',
+        subtopics: ['Alignment', 'Grip', 'Posture', 'Pre-Shot-Routine']
+      },
+      {
+        id: 'complete_guide',
+        name: 'Complete Guide',
+        color: '#fda4af',
+        textColor: '#0f172a',
+        badgeBg: '#be123c',
+        badgeText: '#ffffff',
+        subtopics: ['Driver', 'Eisen', 'Fairwayholz']
+      },
+      {
+        id: 'drills',
+        name: 'Drills',
+        color: '#fda4af',
+        textColor: '#0f172a',
+        badgeBg: '#be123c',
+        badgeText: '#ffffff',
+        subtopics: ['Driver', 'Eisen', 'Fairwayholz', 'Short Game', 'Grün', 'Bunker']
+      },
+      {
+        id: 'driver',
+        name: 'Driver',
+        color: '#cbd5e1',
+        textColor: '#0f172a',
+        badgeBg: '#475569',
+        badgeText: '#ffffff',
+        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish', 'Compression']
+      },
+      {
+        id: 'eisen',
+        name: 'Eisen',
+        color: '#cbd5e1',
+        textColor: '#0f172a',
+        badgeBg: '#475569',
+        badgeText: '#ffffff',
+        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish', 'Compression']
+      },
+      {
+        id: 'fairwayholz',
+        name: 'Fairwayholz',
+        color: '#cbd5e1',
+        textColor: '#0f172a',
+        badgeBg: '#475569',
+        badgeText: '#ffffff',
+        subtopics: ['Takeaway', 'Transition & Downswing', 'Impact', 'Finish', 'Compression']
+      },
+      {
+        id: 'wedges',
+        name: 'Wedges',
+        color: '#cbd5e1',
+        textColor: '#0f172a',
+        badgeBg: '#475569',
+        badgeText: '#ffffff',
+        subtopics: ['Bounce & Turf Interaction', 'Distanzkontrolle', 'Spin & Trajectory']
+      },
+      {
+        id: 'short_game',
+        name: 'Short Game',
+        color: 'rgba(74, 222, 128, 0.5)',
+        textColor: '#0f172a',
+        badgeBg: '#15803d',
+        badgeText: '#ffffff',
+        subtopics: ['Chippen Grünrand', "Chippen um's Grün", 'Kurzes Pitchen']
+      },
+      {
+        id: 'green',
+        name: 'Grün',
+        color: 'rgba(74, 222, 128, 0.5)',
+        textColor: '#0f172a',
+        badgeBg: '#047857',
+        badgeText: '#ffffff',
+        subtopics: ['Putting (Grüns lesen, Längenkontrolle)']
+      },
+      {
+        id: 'bunker',
+        name: 'Bunker',
+        color: 'rgba(74, 222, 128, 0.5)',
+        textColor: '#0f172a',
+        badgeBg: '#15803d',
+        badgeText: '#ffffff',
+        subtopics: ['Greenside Bunker', 'Fairway Bunker', 'Explosion Shot']
+      }
+    ];
+
+    const SUBTOPIC_BADGE_STYLE = {
+      bg: '#ea580c',
+      text: '#ffffff'
+    };
+
+    function buildDefaultSubtopicsList() {
+      const list = [];
+      CATEGORIES.forEach((c) => {
+        c.subtopics.forEach((s) => {
+          const clean = String(s || '').trim();
+          if (clean && !list.some((u) => u.toLowerCase() === clean.toLowerCase())) {
+            list.push(clean);
+          }
+        });
+      });
+      if (!list.some((u) => u.toLowerCase() === 'compression')) {
+        list.push('Compression');
+      }
+      return list;
+    }
+
+    const DEFAULT_PRO = 'Chris Ryan Golf';
+
+    const DEFAULT_PROS = [
+      'Chris Ryan Golf',
+      'Dan Grieve',
+      'Kerrod Gray',
+      'Michael Alexander',
+      'Danny Maude',
+      'Harry Shaw',
+      'Eric Cogorno',
+      'Rick Shiels',
+      'Porzak Golf',
+      'Athletic Motion Golf'
+    ];
+
+    const DEFAULT_TAGS = [
+      '#Driver',
+      '#Eisen',
+      '#Fairwayholz',
+      '#Takeaway',
+      '#Impact',
+      '#Alignment',
+      '#Grip',
+      '#Drill',
+      '#Slope',
+      '#DanGrieve'
+    ];
+
+    const DEFAULT_VIDEOS = [
+      {
+        id: 'vid-1',
+        categoryId: 'basics',
+        subtopics: ['Alignment'],
+        subtopic: 'Alignment',
+        pro: 'Kerrod Gray',
+        title: 'How to Correctly Aim in Golf | The PERFECT Golf Alignment Routine',
+        url: 'https://www.youtube.com/watch?v=9L4h_Z1tF4k',
+        tags: ['#Alignment'],
+        pinned: true,
+        analysis: '',
+        detailedAnalysis:
+          'Kerrod Gray zeigt bei (01:10), wie du ein klares Zwischenziel (Intermediate Target) wählst. Danach richtest du zuerst die Schlagfläche exakt aus und setzt Stand sowie Schultern parallel dazu (03:15).',
+        personalNotes: '',
+        images: []
+      },
+      {
+        id: 'vid-2',
+        categoryId: 'basics',
+        subtopics: ['Grip'],
+        subtopic: 'Grip',
+        pro: 'Michael Alexander',
+        title: 'Der Golfgriff, den niemand lehrt – und warum er alles verändert',
+        url: 'https://www.youtube.com/watch?v=64oA-1gK7A0',
+        tags: ['#Grip'],
+        pinned: false,
+        analysis: '',
+        detailedAnalysis:
+          'Der Schläger wird diagonal durch die Finger der linken Hand gelegt, sodass bei (01:45) etwa zwei bis zweieinhalb Knöchel sichtbar sind. Das ermöglicht eine freie Handgelenksbewegung und konstanten Schlagflächenkontakt (05:20).',
+        personalNotes: '',
+        images: []
+      },
+      {
+        id: 'vid-3',
+        categoryId: 'driver',
+        subtopics: ['Takeaway'],
+        subtopic: 'Takeaway',
+        pro: 'Danny Maude',
+        title: 'What Nobody Tells You About How To Hit Driver Straight',
+        url: 'https://www.youtube.com/watch?v=xQ4d98Z2_1U',
+        tags: ['#Driver', '#Takeaway'],
+        pinned: true,
+        analysis: '',
+        detailedAnalysis:
+          'Danny Maude betont bei (00:15) den leichten Aufwärtstreffwinkel beim Driver im Gegensatz zu den Eisen. Eine saubere Schlagflächenkontrolle im Rück- und Abschwung (04:05) verhindert Slice und Hook.',
+        personalNotes: '',
+        images: []
+      },
+      {
+        id: 'vid-4',
+        categoryId: 'short_game',
+        subtopics: ["Chippen um's Grün", 'Kurzes Pitchen'],
+        subtopic: "Chippen um's Grün",
+        pro: 'Dan Grieve',
+        title: 'How to MASTER playing from SLOPES in the short game',
+        url: 'https://www.youtube.com/watch?v=SlopesShortGameDanGrieve',
+        tags: ['#Slope', '#DanGrieve'],
+        pinned: true,
+        analysis: '',
+        detailedAnalysis:
+          'Dan Grieve erklärt, wie man Setup, Schlägerwahl, Ballposition und Release im kurzen Spiel an Hanglagen (Slopes) anpasst – für sauberen Bodenkontakt und kontrollierten Ballflug.',
+        personalNotes:
+          'Pitch / downslope – 01:00\nPitch / upslope – 05:25\nChip / below the feet – 09:00\nChip / above the feet – 11:23\nPitchshots / below feet & downslope – 13:00\nPitchshots / above feet & upslope – 16:00',
+        images: []
+      }
+    ];
+
+    // =========================================================================
+    // 2. STATE, LESEMODUS & VAULT-KONFIGURATION
+    // =========================================================================
+    const STORAGE_KEYS = {
+      VIDEOS: 'golf_master_videos_v4',
+      PROS: 'golf_master_pros_v4',
+      TAGS: 'golf_master_tags_v1',
+      SUBTOPICS: 'golf_master_subtopics_v2',
+      LEGACY_SUBTOPICS: 'golf_master_subtopics_v1',
+      VAULT: 'golf_master_vault_code'
+    };
+
+    function getInitialVaultCode() {
+      const params = new URLSearchParams(window.location.search);
+      const urlVault = params.get('vault');
+      if (urlVault && urlVault.trim().length >= 3) {
+        const sanitized = urlVault.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+        if (sanitized) {
+          localStorage.setItem(STORAGE_KEYS.VAULT, sanitized);
+          return sanitized;
+        }
+      }
+      const saved = localStorage.getItem(STORAGE_KEYS.VAULT);
+      if (saved) return saved;
+      const generated = 'golf-master-' + Math.random().toString(36).substring(2, 7);
+      localStorage.setItem(STORAGE_KEYS.VAULT, generated);
+      return generated;
+    }
+
+    let state = {
+      videos: [],
+      pros: [],
+      tags: [],
+      subtopics: buildDefaultSubtopicsList(),
+      vaultCode: getInitialVaultCode(),
+      selectedCategory: 'ALL',
+      selectedSubtopic: '',
+      rangeFocusOnly: false,
+      searchQuery: '',
+      activeTagFilter: '',
+      modalSubtopics: [],
+      modalTags: [],
+      modalImages: [],
+      initialVideoSnapshot: '',
+      expandedDetailedIds: {},
+      expandedNotesIds: {},
+      editingCardDetailedId: null,
+      editingProName: '',
+      editingSubtopicName: '',
+      editingTagName: '',
+      readOnlyMode: window.innerWidth < 768
+    };
+
+    // Firebase Referenzen
+    let db = null;
+    let auth = null;
+    let firebaseUser = null;
+    let unsubscribeSnapshot = null;
+    let lastLocalMutationAt = 0;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'golf-master-app';
+
+    function getVideoSubtopicsList(video) {
+      if (!video) return [];
+      const rawList = Array.isArray(video.subtopics)
+        ? video.subtopics
+        : video.subtopic
+          ? [video.subtopic]
+          : [];
+      const unique = [];
+      rawList.forEach((item) => {
+        const clean = String(item || '').trim();
+        if (clean && !unique.some((u) => u.toLowerCase() === clean.toLowerCase())) {
+          unique.push(clean);
+        }
+      });
+      return unique;
+    }
+
+    function normalizeSubtopicsList(rawList, legacyMap = null) {
+      const unique = [];
+      const addOne = (item) => {
+        const clean = String(item || '').trim();
+        if (clean && !unique.some((u) => u.toLowerCase() === clean.toLowerCase())) {
+          unique.push(clean);
+        }
+      };
+
+      if (Array.isArray(rawList)) {
+        rawList.forEach(addOne);
+      } else {
+        buildDefaultSubtopicsList().forEach(addOne);
+        if (legacyMap && typeof legacyMap === 'object') {
+          Object.values(legacyMap).forEach((arr) => {
+            if (Array.isArray(arr)) arr.forEach(addOne);
+          });
+        }
+      }
+      return unique;
+    }
+
+    function getAllSubtopics() {
+      const list = Array.isArray(state.subtopics) ? [...state.subtopics] : [];
+      state.videos.forEach((v) => {
+        getVideoSubtopicsList(v).forEach((clean) => {
+          if (clean && !list.some((s) => s.toLowerCase() === clean.toLowerCase())) {
+            list.push(clean);
+          }
+        });
+      });
+      return list;
+    }
+
+    function getCombinedDetailedText(video) {
+      if (!video) return '';
+      const det = (video.detailedAnalysis || '').trim();
+      const short = (video.analysis || '').trim();
+      if (det && short && !det.includes(short)) {
+        return `${det}\n${short}`;
+      }
+      return det || short;
+    }
+
+    function updateSyncStatus(status, label) {
+      const dot = document.getElementById('sync-dot');
+      const text = document.getElementById('sync-status-text');
+      const btn = document.getElementById('sync-status-btn');
+
+      text.textContent = label;
+      dot.className = 'w-2 h-2 rounded-full';
+      btn.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full border transition cursor-pointer';
+
+      if (status === 'live') {
+        dot.classList.add('bg-emerald-500');
+        btn.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-200', 'hover:bg-emerald-100');
+      } else if (status === 'syncing') {
+        dot.classList.add('bg-amber-500', 'animate-pulse');
+        btn.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-200');
+      } else {
+        dot.classList.add('bg-slate-400');
+        btn.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-200/70');
+      }
+    }
+
+    function loadLocalFallback() {
+      try {
+        const savedVideos = localStorage.getItem(STORAGE_KEYS.VIDEOS);
+        const savedPros = localStorage.getItem(STORAGE_KEYS.PROS);
+        const savedTags = localStorage.getItem(STORAGE_KEYS.TAGS);
+        const savedSubtopics = localStorage.getItem(STORAGE_KEYS.SUBTOPICS);
+        const legacySubtopics = localStorage.getItem(STORAGE_KEYS.LEGACY_SUBTOPICS);
+
+        state.videos = savedVideos ? JSON.parse(savedVideos) : [...DEFAULT_VIDEOS];
+        const parsedPros = savedPros ? JSON.parse(savedPros) : [...DEFAULT_PROS];
+        if (!parsedPros.includes(DEFAULT_PRO)) parsedPros.unshift(DEFAULT_PRO);
+        state.pros = parsedPros;
+        state.tags = savedTags ? JSON.parse(savedTags) : [...DEFAULT_TAGS];
+
+        if (savedSubtopics !== null) {
+          state.subtopics = normalizeSubtopicsList(JSON.parse(savedSubtopics));
+        } else if (legacySubtopics !== null) {
+          state.subtopics = normalizeSubtopicsList(null, JSON.parse(legacySubtopics));
+        } else {
+          state.subtopics = buildDefaultSubtopicsList();
+        }
+      } catch (e) {
+        state.videos = [...DEFAULT_VIDEOS];
+        state.pros = [...DEFAULT_PROS];
+        state.tags = [...DEFAULT_TAGS];
+        state.subtopics = buildDefaultSubtopicsList();
+      }
+    }
+
+    function saveLocalFallback() {
+      try {
+        localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(state.videos));
+        localStorage.setItem(STORAGE_KEYS.PROS, JSON.stringify(state.pros));
+        localStorage.setItem(STORAGE_KEYS.TAGS, JSON.stringify(state.tags));
+        localStorage.setItem(STORAGE_KEYS.SUBTOPICS, JSON.stringify(state.subtopics));
+      } catch (e) {
+        showToast('Speicherlimit erreicht – ggf. große Bilder reduzieren.', 'error');
+      }
+    }
+
+    async function initFirebaseSync() {
+      loadLocalFallback();
+      renderAll();
+
+      if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+        updateSyncStatus('offline', 'Lokal gespeichert');
+        return;
+      }
+
+      try {
+        updateSyncStatus('syncing', 'Synchronisiere...');
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          const cred = await signInWithCustomToken(auth, __initial_auth_token);
+          firebaseUser = cred.user;
+        } else {
+          const cred = await signInAnonymously(auth);
+          firebaseUser = cred.user;
+        }
+
+        subscribeToVault(state.vaultCode);
+      } catch (err) {
+        console.error('Firebase Init Fehler:', err);
+        updateSyncStatus('offline', 'Lokal gespeichert');
+      }
+    }
+
+    function subscribeToVault(vaultCode) {
+      if (!db || !firebaseUser) return;
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+      }
+
+      updateSyncStatus('syncing', 'Synchronisiere...');
+      const vaultDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'golf_vaults', vaultCode);
+
+      unsubscribeSnapshot = onSnapshot(
+        vaultDocRef,
+        async (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            const remoteUpdatedMs = data.updatedAt ? Date.parse(data.updatedAt) : 0;
+            if (lastLocalMutationAt && remoteUpdatedMs && remoteUpdatedMs < lastLocalMutationAt) {
+              return;
+            }
+            if (Array.isArray(data.videos)) state.videos = data.videos;
+            if (Array.isArray(data.pros)) state.pros = data.pros;
+            if (Array.isArray(data.tags)) state.tags = data.tags;
+            if (Array.isArray(data.subtopics)) {
+              state.subtopics = normalizeSubtopicsList(data.subtopics);
+            } else if (data.subtopicsByCategory) {
+              state.subtopics = normalizeSubtopicsList(null, data.subtopicsByCategory);
+            }
+            saveLocalFallback();
+            renderAll();
+            updateSyncStatus('live', 'Live synchronisiert');
+          } else {
+            await pushStateToCloud();
+          }
+        },
+        (error) => {
+          console.error('Firestore Snapshot Fehler:', error);
+          updateSyncStatus('offline', 'Lokal gespeichert');
+        }
+      );
+    }
+
+    async function pushStateToCloud() {
+      lastLocalMutationAt = Date.now();
+      saveLocalFallback();
+      if (!db || !firebaseUser) {
+        updateSyncStatus('offline', 'Lokal gespeichert');
+        return;
+      }
+
+      try {
+        updateSyncStatus('syncing', 'Synchronisiere...');
+        const vaultDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'golf_vaults', state.vaultCode);
+        await setDoc(vaultDocRef, {
+          vaultCode: state.vaultCode,
+          updatedAt: new Date(lastLocalMutationAt).toISOString(),
+          pros: state.pros,
+          tags: state.tags,
+          subtopics: state.subtopics,
+          videos: state.videos
+        });
+        updateSyncStatus('live', 'Live synchronisiert');
+      } catch (err) {
+        console.error('Cloud Save Fehler:', err);
+        updateSyncStatus('offline', 'Lokal gespeichert');
+        showToast('Cloud-Sync fehlgeschlagen – lokal gesichert.', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 3. HILFSFUNKTIONEN, SUCH-HIGHLIGHTING, TIMESTAMP-SPRUNGMARKEN & PIN
+    // =========================================================================
+    window.slideContainer = function (elementId, deltaX) {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.scrollBy({ left: deltaX, behavior: 'smooth' });
+      }
+    };
+
+    function enableDragToScroll(elementId) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      let isDown = false;
+      let startX = 0;
+      let scrollLeft = 0;
+      let dragged = false;
+
+      el.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        isDown = true;
+        dragged = false;
+        startX = e.pageX - el.offsetLeft;
+        scrollLeft = el.scrollLeft;
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDown = false;
+        setTimeout(() => {
+          dragged = false;
+        }, 0);
+      });
+
+      el.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - el.offsetLeft;
+        const walk = (x - startX) * 1.4;
+        if (Math.abs(walk) > 4) dragged = true;
+        el.scrollLeft = scrollLeft - walk;
+      });
+
+      el.addEventListener(
+        'click',
+        (e) => {
+          if (dragged) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        },
+        true
+      );
+    }
+
+    function resetPanelPosition(modalId) {
+      const modal = document.getElementById(modalId);
+      if (!modal) return;
+      const panel = modal.querySelector('[data-draggable-panel]');
+      if (!panel) return;
+      panel.style.transform = '';
+      panel.dataset.dx = '0';
+      panel.dataset.dy = '0';
+    }
+
+    function initDraggableModals() {
+      let activeDrag = null;
+
+      document.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        if (e.target.closest('button, a, input, select, textarea, label')) return;
+
+        const handle = e.target.closest('[data-drag-handle]');
+        if (!handle) return;
+
+        const panel = handle.closest('[data-draggable-panel]');
+        if (!panel) return;
+
+        const curX = parseFloat(panel.dataset.dx || '0') || 0;
+        const curY = parseFloat(panel.dataset.dy || '0') || 0;
+
+        activeDrag = {
+          panel,
+          startX: e.clientX,
+          startY: e.clientY,
+          baseX: curX,
+          baseY: curY
+        };
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!activeDrag) return;
+        e.preventDefault();
+        const dx = activeDrag.baseX + (e.clientX - activeDrag.startX);
+        const dy = activeDrag.baseY + (e.clientY - activeDrag.startY);
+        activeDrag.panel.dataset.dx = String(dx);
+        activeDrag.panel.dataset.dy = String(dy);
+        activeDrag.panel.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      });
+
+      document.addEventListener('mouseup', () => {
+        activeDrag = null;
+      });
+    }
+
+    function extractYouTubeId(url) {
+      if (!url) return null;
+      const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+      const match = url.match(regExp);
+      return match ? match[1] : null;
+    }
+
+    function parseTimestampToSeconds(rawToken) {
+      const match = String(rawToken || '').match(/(\d{1,2}):(\d{2})/);
+      if (!match) return 0;
+      const mins = parseInt(match[1], 10) || 0;
+      const secs = parseInt(match[2], 10) || 0;
+      return mins * 60 + secs;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escapeRegExp(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function highlightSearch(text) {
+      const safe = escapeHtml(text || '');
+      const q = (state.searchQuery || '').trim();
+      if (!q) return safe;
+      const regex = new RegExp(`(${escapeRegExp(escapeHtml(q))})`, 'gi');
+      return safe.replace(regex, '<mark class="search-hit">$1</mark>');
+    }
+
+    function formatAnalysisText(text, videoId = '') {
+      const safe = escapeHtml(text || '');
+      const q = (state.searchQuery || '').trim();
+      const queryRegex = q ? new RegExp(`(${escapeRegExp(escapeHtml(q))})`, 'gi') : null;
+      const tsPattern = '(\\(\\[\\d{1,2}:\\d{2}\\]\\)|\\(\\d{1,2}:\\d{2}\\)|\\[\\d{1,2}:\\d{2}\\]|\\b\\d{1,2}:\\d{2}\\b)';
+      const tsSplitRegex = new RegExp(tsPattern, 'g');
+      const tsTestRegex = new RegExp(`^${tsPattern}$`);
+
+      return safe
+        .split(tsSplitRegex)
+        .map((part) => {
+          if (!part) return '';
+          if (tsTestRegex.test(part)) {
+            const seconds = parseTimestampToSeconds(part);
+            const inner = queryRegex ? part.replace(queryRegex, '<mark class="search-hit">$1</mark>') : part;
+            return `<button type="button" onclick="openPlayerAtTimestamp('${escapeHtml(videoId)}', ${seconds})" title="Direkt zu ${escapeHtml(part)} springen" class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-emerald-100 hover:bg-emerald-600 text-emerald-950 hover:text-white font-mono text-[10px] font-bold transition cursor-pointer align-baseline"><span class="text-[9px]">▶</span><span>${inner}</span></button>`;
+          }
+          return queryRegex ? part.replace(queryRegex, '<mark class="search-hit">$1</mark>') : part;
+        })
+        .join('')
+        .replace(/\n/g, '<br />');
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgClass = type === 'error' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-900 border-slate-200';
+      toast.className = `pointer-events-auto px-3.5 py-2.5 rounded-xl border ${bgClass} text-xs sm:text-sm font-medium shadow-lg flex items-center gap-2 transition-all duration-300`;
+      toast.innerHTML = `
+        <span class="w-2 h-2 rounded-full ${type === 'error' ? 'bg-white' : 'bg-emerald-500'}"></span>
+        <span>${escapeHtml(message)}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 2600);
+    }
+
+    function applyReadOnlyUI() {
+      const isRO = state.readOnlyMode;
+
+      const dBtn = document.getElementById('desktop-readonly-btn');
+      const dIcon = document.getElementById('desktop-readonly-icon');
+      const dLabel = document.getElementById('desktop-readonly-label');
+      const dAdd = document.getElementById('desktop-add-btn');
+      const dPros = document.getElementById('desktop-pros-btn');
+      const dSubs = document.getElementById('desktop-subtopics-btn');
+      const dTags = document.getElementById('desktop-tags-btn');
+
+      const mIcon = document.getElementById('mobile-readonly-icon');
+      const mLabel = document.getElementById('mobile-readonly-label');
+      const mAdd = document.getElementById('mobile-add-btn');
+      const emptyAdd = document.getElementById('empty-add-btn');
+
+      if (isRO) {
+        dIcon.textContent = '👁️';
+        dLabel.textContent = 'Lesemodus';
+        dBtn.classList.add('border-amber-300', 'bg-amber-50', 'text-amber-900');
+        dAdd.classList.add('hidden');
+        dPros.classList.add('hidden');
+        dSubs.classList.add('hidden');
+        dTags.classList.add('hidden');
+
+        mIcon.textContent = '👁️';
+        mLabel.textContent = 'Lesemodus';
+        mAdd.classList.add('hidden');
+        if (emptyAdd) emptyAdd.classList.add('hidden');
+      } else {
+        dIcon.textContent = '✏️';
+        dLabel.textContent = 'Bearbeiten';
+        dBtn.classList.remove('border-amber-300', 'bg-amber-50', 'text-amber-900');
+        dAdd.classList.remove('hidden');
+        dPros.classList.remove('hidden');
+        dSubs.classList.remove('hidden');
+        dTags.classList.remove('hidden');
+
+        mIcon.textContent = '✏️';
+        mLabel.textContent = 'Bearbeiten';
+        mAdd.classList.remove('hidden');
+        if (emptyAdd) emptyAdd.classList.remove('hidden');
+      }
+    }
+
+    window.toggleReadOnlyMode = function () {
+      state.readOnlyMode = !state.readOnlyMode;
+      applyReadOnlyUI();
+      renderBoard();
+      showToast(state.readOnlyMode ? 'Lesemodus aktiv' : 'Bearbeitungs-Modus aktiv');
+    };
+
+    window.togglePinVideo = async function (videoId) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video) return;
+      video.pinned = !video.pinned;
+      updateRangeFocusButton();
+      renderBoard();
+      showToast(video.pinned ? 'Auf Range-Merkliste gepinnt 📌' : 'Von Range-Merkliste entfernt');
+      await pushStateToCloud();
+    };
+
+    window.toggleRangeFocusFilter = function () {
+      state.rangeFocusOnly = !state.rangeFocusOnly;
+      updateRangeFocusButton();
+      renderBoard();
+    };
+
+    function updateRangeFocusButton() {
+      const pinnedCount = state.videos.filter((v) => !!v.pinned).length;
+      const countEl = document.getElementById('range-focus-count');
+      const btnEl = document.getElementById('range-focus-btn');
+      if (countEl) countEl.textContent = String(pinnedCount);
+      if (btnEl) {
+        if (state.rangeFocusOnly) {
+          btnEl.className =
+            'inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition cursor-pointer bg-amber-500 text-white border-amber-600 shadow-2xs';
+        } else {
+          btnEl.className =
+            'inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition cursor-pointer bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100';
+        }
+      }
+    }
+
+    // =========================================================================
+    // 4. FILTER, SUCHE & SCHNELLFILTER-CHIPS
+    // =========================================================================
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      state.searchQuery = e.target.value.trim();
+      document.getElementById('clear-search-btn').classList.toggle('hidden', !state.searchQuery);
+      renderQuickChipsBar();
+      renderBoard();
+    });
+
+    window.clearSearch = function () {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      state.searchQuery = '';
+      document.getElementById('clear-search-btn').classList.add('hidden');
+      renderQuickChipsBar();
+      renderBoard();
+    };
+
+    window.setCategoryFilter = function (catId) {
+      state.selectedCategory = catId;
+      renderCategoryFilterBar();
+      renderBoard();
+    };
+
+    window.filterBySubtopic = function (subtopicName) {
+      const clean = String(subtopicName || '').trim();
+      if (!clean) return;
+      state.selectedSubtopic =
+        state.selectedSubtopic.toLowerCase() === clean.toLowerCase() ? '' : clean;
+      renderBoard();
+    };
+
+    window.filterByTag = function (tag) {
+      state.activeTagFilter = state.activeTagFilter === tag ? '' : tag;
+      renderQuickChipsBar();
+      renderBoard();
+    };
+
+    window.filterByPro = function (proName) {
+      const input = document.getElementById('search-input');
+      if (state.searchQuery.toLowerCase() === proName.toLowerCase()) {
+        clearSearch();
+      } else {
+        input.value = proName;
+        state.searchQuery = proName;
+        document.getElementById('clear-search-btn').classList.remove('hidden');
+        renderBoard();
+      }
+      renderQuickChipsBar();
+    };
+
+    window.resetAllFilters = function () {
+      state.selectedCategory = 'ALL';
+      state.selectedSubtopic = '';
+      state.rangeFocusOnly = false;
+      state.activeTagFilter = '';
+      updateRangeFocusButton();
+      clearSearch();
+      renderCategoryFilterBar();
+      renderQuickChipsBar();
+      renderBoard();
+    };
+
+    function getFilteredVideos() {
+      const q = state.searchQuery.toLowerCase();
+      return state.videos.filter((video) => {
+        if (state.rangeFocusOnly && !video.pinned) {
+          return false;
+        }
+        if (state.selectedCategory !== 'ALL' && video.categoryId !== state.selectedCategory) {
+          return false;
+        }
+        const videoSubs = getVideoSubtopicsList(video);
+        if (
+          state.selectedSubtopic &&
+          !videoSubs.some((s) => s.toLowerCase() === state.selectedSubtopic.toLowerCase())
+        ) {
+          return false;
+        }
+        if (state.activeTagFilter && !(video.tags || []).some((t) => t.toLowerCase() === state.activeTagFilter.toLowerCase())) {
+          return false;
+        }
+        if (!q) return true;
+
+        const cat = CATEGORIES.find((c) => c.id === video.categoryId);
+        const searchable = [
+          video.pro,
+          video.title,
+          ...videoSubs,
+          video.analysis,
+          video.detailedAnalysis || '',
+          video.personalNotes || '',
+          cat ? cat.name : '',
+          ...(video.tags || [])
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        return searchable.includes(q);
+      });
+    }
+
+    // =========================================================================
+    // 5. RENDERING: TOPICS, SCHNELLFILTER & KOMPAKTE VIDEOKARTEN
+    // =========================================================================
+    function renderAll() {
+      applyReadOnlyUI();
+      updateRangeFocusButton();
+      renderCategoryFilterBar();
+      renderQuickChipsBar();
+      renderBoard();
+    }
+
+    function renderCategoryFilterBar() {
+      const bar = document.getElementById('category-filter-bar');
+      const allActive = state.selectedCategory === 'ALL';
+
+      let html = `
+        <button
+          onclick="setCategoryFilter('ALL')"
+          class="shrink-0 px-3 py-1 rounded-lg text-[11px] font-bold tracking-wide transition cursor-pointer ${
+            allActive
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }"
+        >
+          ALLE BEREICHE (${state.videos.length})
+        </button>
+      `;
+
+      CATEGORIES.forEach((cat) => {
+        const count = state.videos.filter((v) => v.categoryId === cat.id).length;
+        const isActive = state.selectedCategory === cat.id;
+        html += `
+          <button
+            onclick="setCategoryFilter('${cat.id}')"
+            style="background-color: ${cat.color}; color: ${cat.textColor}; border-color: ${isActive ? '#0f172a' : 'rgba(15,23,42,0.16)'};"
+            class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-wide border transition flex items-center gap-1.5 cursor-pointer hover:brightness-95 ${
+              isActive ? 'ring-2 ring-slate-900/25 shadow-xs' : ''
+            }"
+          >
+            <span>${highlightSearch(cat.name)}</span>
+            <span class="px-1.5 py-0.2 rounded bg-white/60 text-slate-900 text-[10px] font-extrabold">${count}</span>
+          </button>
+        `;
+      });
+
+      bar.innerHTML = html;
+    }
+
+    function renderQuickChipsBar() {
+      const proBar = document.getElementById('pro-chips-bar');
+      const tagBar = document.getElementById('tag-chips-bar');
+      const proSet = new Set(state.pros.filter(Boolean));
+      state.videos.forEach((v) => {
+        if (v.pro) proSet.add(v.pro);
+      });
+      const allPros = Array.from(proSet);
+
+      const tagSet = new Set(state.tags.filter(Boolean));
+      state.videos.forEach((v) => {
+        (v.tags || []).forEach((t) => {
+          const isProTag = allPros.some((p) => '#' + p.replace(/\s+/g, '').toLowerCase() === t.toLowerCase());
+          if (!isProTag) tagSet.add(t);
+        });
+      });
+      const allTags = Array.from(tagSet);
+
+      let proHtml = `<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1">Pros:</span>`;
+      allPros.forEach((pro) => {
+        const active = state.searchQuery.toLowerCase() === pro.toLowerCase();
+        proHtml += `
+          <button
+            onclick="filterByPro('${escapeHtml(pro)}')"
+            class="shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition cursor-pointer ${
+              active
+                ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+            }"
+          >
+            👤 ${highlightSearch(pro)}
+          </button>
+        `;
+      });
+
+      let tagHtml = `<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1">Tags:</span>`;
+      allTags.forEach((tag) => {
+        const active = state.activeTagFilter.toLowerCase() === tag.toLowerCase();
+        tagHtml += `
+          <button
+            onclick="filterByTag('${escapeHtml(tag)}')"
+            class="shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition cursor-pointer ${
+              active
+                ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
+                : 'bg-indigo-50 text-indigo-800 border-indigo-200 hover:bg-indigo-100'
+            }"
+          >
+            ${highlightSearch(tag)}
+          </button>
+        `;
+      });
+
+      proBar.innerHTML = proHtml;
+      tagBar.innerHTML = tagHtml;
+    }
+
+    function renderBoard() {
+      const filtered = getFilteredVideos();
+      const boardContainer = document.getElementById('board-content');
+      const emptyState = document.getElementById('empty-state');
+      const badge = document.getElementById('video-count-badge');
+
+      badge.textContent = `${filtered.length} ${filtered.length === 1 ? 'Video' : 'Videos'}`;
+
+      const filterBar = document.getElementById('active-filters-bar');
+      const pillsContainer = document.getElementById('active-filter-pills');
+      const pills = [];
+
+      if (state.rangeFocusOnly) {
+        pills.push(`<span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-950 border border-amber-300">📌 Range-Merkliste</span>`);
+      }
+      if (state.selectedCategory !== 'ALL') {
+        const cat = CATEGORIES.find((c) => c.id === state.selectedCategory);
+        if (cat) {
+          pills.push(`<span class="px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-900/15" style="background-color:${cat.color}; color:${cat.textColor}">${escapeHtml(cat.name)}</span>`);
+        }
+      }
+      if (state.selectedSubtopic) {
+        pills.push(`<button type="button" onclick="filterBySubtopic('${escapeHtml(state.selectedSubtopic)}')" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-900 border border-emerald-300 hover:bg-emerald-100 cursor-pointer">Sub-Topic: ${escapeHtml(state.selectedSubtopic)} &times;</button>`);
+      }
+      if (state.activeTagFilter) {
+        pills.push(`<span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">Tag: ${escapeHtml(state.activeTagFilter)}</span>`);
+      }
+      if (state.searchQuery) {
+        pills.push(`<span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">Suche: „${escapeHtml(state.searchQuery)}“</span>`);
+      }
+
+      if (pills.length > 0) {
+        filterBar.classList.remove('hidden');
+        pillsContainer.innerHTML = pills.join('');
+      } else {
+        filterBar.classList.add('hidden');
+      }
+
+      if (filtered.length === 0) {
+        boardContainer.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      let sectionsHtml = '';
+
+      CATEGORIES.forEach((cat) => {
+        const catVideos = filtered.filter((v) => v.categoryId === cat.id);
+        if (catVideos.length === 0) return;
+
+        const addBtnHtml = state.readOnlyMode
+          ? ''
+          : `<button
+              type="button"
+              onclick="openVideoModal('${cat.id}')"
+              title="Video zu ${escapeHtml(cat.name)} hinzufügen"
+              aria-label="Video zu ${escapeHtml(cat.name)} hinzufügen"
+              class="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm inline-flex items-center justify-center transition cursor-pointer"
+            >
+              <svg class="w-4 h-4 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            </button>`;
+
+        sectionsHtml += `
+          <section class="space-y-2.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <div
+                style="background-color: ${cat.color}; color: ${cat.textColor};"
+                class="px-3.5 py-1.5 rounded-lg shadow-2xs border border-slate-900/15 inline-flex items-center gap-2.5"
+              >
+                <h2 class="text-xs sm:text-sm font-extrabold tracking-wide">
+                  ${highlightSearch(cat.name)}
+                </h2>
+                <span class="text-[11px] font-extrabold px-1.5 py-0.2 rounded bg-white/65 text-slate-900">
+                  ${catVideos.length}
+                </span>
+              </div>
+              ${addBtnHtml}
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 items-start">
+              ${catVideos.map((video) => renderVideoCard(video, cat)).join('')}
+            </div>
+          </section>
+        `;
+      });
+
+      boardContainer.innerHTML = sectionsHtml;
+    }
+
+    window.toggleDetailedAnalysis = function (videoId) {
+      state.expandedDetailedIds[videoId] = !state.expandedDetailedIds[videoId];
+      if (!state.expandedDetailedIds[videoId] && state.editingCardDetailedId === videoId) {
+        state.editingCardDetailedId = null;
+      }
+      renderBoard();
+    };
+
+    window.toggleCardNotes = function (videoId) {
+      state.expandedNotesIds[videoId] = !state.expandedNotesIds[videoId];
+      renderBoard();
+    };
+
+    window.startCardDetailedEdit = function (videoId) {
+      state.expandedDetailedIds[videoId] = true;
+      state.editingCardDetailedId = videoId;
+      renderBoard();
+      const ta = document.getElementById(`card-detailed-textarea-${videoId}`);
+      if (ta) ta.focus();
+    };
+
+    window.cancelCardDetailedEdit = function () {
+      state.editingCardDetailedId = null;
+      renderBoard();
+    };
+
+    window.saveCardDetailedEdit = async function (videoId) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video) return;
+      const ta = document.getElementById(`card-detailed-textarea-${videoId}`);
+      if (!ta) return;
+      video.detailedAnalysis = ta.value.trim();
+      video.analysis = '';
+      state.editingCardDetailedId = null;
+      renderBoard();
+      showToast('Ausführliche Analyse gespeichert.');
+      await pushStateToCloud();
+    };
+
+    window.requestVideoAnalysis = async function (videoId) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video) return;
+      const linkText = video.url || '';
+      if (linkText && navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(linkText);
+        } catch (_) {}
+      }
+      state.expandedDetailedIds[videoId] = true;
+      state.editingCardDetailedId = videoId;
+      renderBoard();
+      const ta = document.getElementById(`card-detailed-textarea-${videoId}`);
+      if (ta) ta.focus();
+      showToast('Link kopiert – du kannst die Analyse jetzt direkt eintragen.');
+    };
+
+    window.openImageLightbox = function (videoId, imgIndex) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video || !Array.isArray(video.images) || !video.images[imgIndex]) return;
+      const item = video.images[imgIndex];
+      const src = typeof item === 'string' ? item : item.dataUrl;
+      const name = typeof item === 'string' ? `Bild ${imgIndex + 1}` : item.name || `Bild ${imgIndex + 1}`;
+
+      resetPanelPosition('image-lightbox-modal');
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox-caption').textContent = `${video.pro} – ${name}`;
+      const modal = document.getElementById('image-lightbox-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeImageLightbox = function () {
+      const modal = document.getElementById('image-lightbox-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      document.getElementById('lightbox-img').src = '';
+    };
+
+    function renderVideoCard(video, cat) {
+      const ytId = extractYouTubeId(video.url);
+      const thumbUrl = ytId
+        ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
+        : 'https://placehold.co/320x180/e2e8f0/475569?text=Golf+Video';
+
+      const tagsHtml = (video.tags || [])
+        .map((tag) => {
+          const isTagActive = state.activeTagFilter.toLowerCase() === tag.toLowerCase();
+          return `
+            <button
+              onclick="filterByTag('${escapeHtml(tag)}')"
+              class="text-[10px] font-semibold transition cursor-pointer ${
+                isTagActive
+                  ? 'text-white bg-indigo-600 px-1 py-0.2 rounded'
+                  : 'text-indigo-700 hover:text-indigo-950'
+              }"
+            >
+              ${highlightSearch(tag)}
+            </button>
+          `;
+        })
+        .join(' ');
+
+      const isPinned = !!video.pinned;
+      const pinBtnHtml = `<button
+        type="button"
+        onclick="togglePinVideo('${video.id}')"
+        title="${isPinned ? 'Von Range-Merkliste entfernen' : 'Auf Range-Merkliste pinnen'}"
+        aria-label="${isPinned ? 'Von Range-Merkliste entfernen' : 'Auf Range-Merkliste pinnen'}"
+        class="p-1 rounded-md text-xs leading-none transition cursor-pointer ${
+          isPinned
+            ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300'
+            : 'text-slate-400 hover:text-amber-700 hover:bg-amber-50'
+        }"
+      >📌</button>`;
+
+      const cardActionsHtml = state.readOnlyMode
+        ? `<div class="flex items-center gap-0.5 shrink-0">${pinBtnHtml}</div>`
+        : `<div class="flex items-center gap-0.5 shrink-0">
+            ${pinBtnHtml}
+            <button
+              onclick="openEditVideoModal('${video.id}')"
+              title="Übersicht bearbeiten"
+              class="p-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button
+              onclick="requestDeleteVideo('${video.id}')"
+              title="Eintrag löschen"
+              class="p-1 rounded-md text-slate-500 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>`;
+
+      const images = Array.isArray(video.images) ? video.images : [];
+      const imagesThumbHtml =
+        images.length > 0
+          ? `<div class="px-2.5 pt-1.5 flex flex-wrap items-center gap-1.5">
+              ${images
+                .map((img, idx) => {
+                  const src = typeof img === 'string' ? img : img.dataUrl;
+                  const alt = typeof img === 'string' ? `Bild ${idx + 1}` : img.name || `Bild ${idx + 1}`;
+                  return `
+                    <button
+                      type="button"
+                      onclick="openImageLightbox('${video.id}', ${idx})"
+                      title="${escapeHtml(alt)} – Klick für Großansicht"
+                      class="w-11 h-11 rounded-md overflow-hidden border border-slate-200 hover:border-emerald-500 shadow-2xs shrink-0 cursor-pointer transition hover:scale-105"
+                    >
+                      <img src="${src}" alt="${escapeHtml(alt)}" class="w-full h-full object-cover" />
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>`
+          : '';
+
+      const combinedDetailed = getCombinedDetailedText(video);
+      const isExpanded = !!state.expandedDetailedIds[video.id] || state.editingCardDetailedId === video.id;
+      const isEditingCardDetailed = state.editingCardDetailedId === video.id && !state.readOnlyMode;
+      const hasDetailed = !!combinedDetailed;
+      const detailedLabelText = 'Ausführliche Analyse';
+      const statusIconHtml = hasDetailed
+        ? `<span title="Eintrag vorhanden" class="w-6 h-6 rounded-md bg-emerald-700 text-white text-sm font-black inline-flex items-center justify-center shrink-0 shadow-2xs">✓</span>`
+        : state.readOnlyMode
+          ? ''
+          : `<button
+              type="button"
+              onclick="requestVideoAnalysis('${video.id}')"
+              title="Link kopieren & Analyse direkt bearbeiten"
+              aria-label="Link kopieren und Analyse bearbeiten"
+              class="w-6 h-6 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center justify-center shrink-0 transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            </button>`;
+
+      let detailedPanelHtml = '';
+      if (isExpanded) {
+        if (isEditingCardDetailed) {
+          detailedPanelHtml = `<div class="mt-1.5 p-2 rounded-lg bg-emerald-50 border border-emerald-300 space-y-1.5">
+            <textarea
+              id="card-detailed-textarea-${video.id}"
+              rows="3"
+              placeholder="Zusammenfassung &amp; Time-Stamps (z. B. 01:10)..."
+              class="w-full p-1.5 rounded-md bg-white border border-emerald-400 text-[11px] text-slate-900 focus:outline-none leading-snug"
+            >${escapeHtml(combinedDetailed)}</textarea>
+            <div class="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onclick="cancelCardDetailedEdit()"
+                class="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-semibold cursor-pointer"
+              >
+                Abbruch
+              </button>
+              <button
+                type="button"
+                onclick="saveCardDetailedEdit('${video.id}')"
+                class="px-2.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-semibold cursor-pointer"
+              >
+                Speichern
+              </button>
+            </div>
+          </div>`;
+        } else {
+          const editInlineBtn = state.readOnlyMode
+            ? ''
+            : `<div class="mt-1.5 flex justify-end">
+                <button
+                  type="button"
+                  onclick="startCardDetailedEdit('${video.id}')"
+                  class="text-[10px] font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer"
+                >
+                  Bearbeiten
+                </button>
+              </div>`;
+          detailedPanelHtml = `<div class="mt-1.5 p-2 rounded-lg bg-emerald-50/90 border border-emerald-200 text-[11px] text-slate-800 leading-snug max-h-36 overflow-y-auto">
+            ${
+              hasDetailed
+                ? formatAnalysisText(combinedDetailed, video.id)
+                : '<span class="italic text-slate-500">Noch keine ausführliche Analyse hinterlegt.</span>'
+            }
+            ${editInlineBtn}
+          </div>`;
+        }
+      }
+
+      const personalNotesText = (video.personalNotes || '').trim();
+      const isNotesExpanded = !!state.expandedNotesIds[video.id];
+      const personalNotesHtml = personalNotesText
+        ? `<div class="px-2.5 pt-1.5 pb-2.5 mt-1.5 border-t border-amber-200/80">
+            <button
+              type="button"
+              onclick="toggleCardNotes('${video.id}')"
+              class="w-full py-1 px-2 rounded-md bg-amber-100/90 hover:bg-amber-200/80 text-amber-950 text-[10px] font-extrabold tracking-wide flex items-center justify-between transition cursor-pointer"
+            >
+              <span>Anmerkungen</span>
+              <span class="text-[9px]">${isNotesExpanded ? '▲' : '▼'}</span>
+            </button>
+            ${
+              isNotesExpanded
+                ? `<div class="mt-1.5 p-2 rounded-lg bg-amber-50/80 border border-amber-200 text-[11px] text-slate-700 leading-snug max-h-32 overflow-y-auto">
+                    ${formatAnalysisText(personalNotesText, video.id)}
+                  </div>`
+                : ''
+            }
+          </div>`
+        : '<div class="pb-1.5"></div>';
+
+      const videoSubtopics = getVideoSubtopicsList(video);
+      const subtopicsStackedHtml = (videoSubtopics.length > 0 ? videoSubtopics : ['Allgemein'])
+        .map((subtopicLabel) => {
+          const isSubtopicActive =
+            state.selectedSubtopic &&
+            subtopicLabel.toLowerCase() === state.selectedSubtopic.toLowerCase();
+          return `
+            <button
+              type="button"
+              onclick="filterBySubtopic('${escapeHtml(subtopicLabel)}')"
+              title="Nach Sub-Topic „${escapeHtml(subtopicLabel)}“ filtern"
+              style="background-color: ${SUBTOPIC_BADGE_STYLE.bg}; color: ${SUBTOPIC_BADGE_STYLE.text};"
+              class="w-fit max-w-full px-2 py-0.5 rounded text-[10px] font-bold tracking-wide truncate transition cursor-pointer hover:brightness-110 ${
+                isSubtopicActive ? 'ring-2 ring-amber-300' : ''
+              }"
+            >
+              ${highlightSearch(subtopicLabel)}
+            </button>
+          `;
+        })
+        .join('');
+
+      return `
+        <article class="bg-white hover:bg-slate-50/90 border border-slate-200 hover:border-slate-300 rounded-xl overflow-hidden shadow-2xs flex flex-col transition">
+          
+          <!-- Obere Leiste: Sub-Topic-Badges untereinander (Klick-Filter) + Pin & Bearbeiten/Löschen -->
+          <div class="px-2.5 pt-2 pb-1 flex items-start justify-between gap-1">
+            <div class="flex flex-col items-start gap-1 min-w-0 flex-1">
+              ${subtopicsStackedHtml}
+            </div>
+            ${cardActionsHtml}
+          </div>
+
+          <!-- Pro & Tags -->
+          <div class="px-2.5 pb-1.5">
+            <button
+              onclick="filterByPro('${escapeHtml(video.pro)}')"
+              title="Alle Videos von ${escapeHtml(video.pro)} anzeigen"
+              class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 hover:text-amber-950 transition cursor-pointer truncate max-w-full"
+            >
+              <span>👤</span>
+              <span class="truncate">${highlightSearch(video.pro)}</span>
+            </button>
+            <div class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-tight">
+              ${tagsHtml}
+            </div>
+          </div>
+
+          <!-- Kompaktes YouTube Thumbnail + Titel -->
+          <div class="px-2.5">
+            <div
+              onclick="openPlayerModal('${video.id}')"
+              class="relative aspect-video w-full rounded-lg overflow-hidden bg-slate-900 border border-slate-200 cursor-pointer group/thumb"
+            >
+              <img
+                src="${thumbUrl}"
+                alt="${escapeHtml(video.title || video.pro)}"
+                onerror="this.src='https://placehold.co/320x180/e2e8f0/475569?text=YouTube+Video'"
+                class="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform duration-200"
+              />
+              <div class="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/10 transition flex items-center justify-center">
+                <div class="w-8 h-8 rounded-full bg-black/75 group-hover/thumb:bg-red-600 text-white flex items-center justify-center shadow transition">
+                  <svg class="w-3.5 h-3.5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-1.5 flex items-start justify-between gap-1">
+              <h3 class="text-xs font-bold text-slate-900 leading-snug line-clamp-2">
+                ${highlightSearch(video.title || 'Golf Video Analyse')}
+              </h3>
+              <a
+                href="${escapeHtml(video.url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Auf YouTube öffnen"
+                class="shrink-0 text-[11px] text-slate-400 hover:text-emerald-700 px-0.5"
+              >
+                ↗
+              </a>
+            </div>
+          </div>
+
+          <!-- Hochgeladene Bild-Thumbnails -->
+          ${imagesThumbHtml}
+
+          <!-- Tafel: Grüner Button für ausführliche Analyse + Häkchen/Plus -->
+          <div class="px-2.5 pt-2">
+            <div class="p-1.5 rounded-lg bg-emerald-50/70 border border-emerald-200/90">
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  onclick="toggleDetailedAnalysis('${video.id}')"
+                  class="flex-1 min-w-0 py-1 px-2 rounded-md bg-emerald-200 hover:bg-emerald-300 text-emerald-950 text-[10px] font-extrabold tracking-wide text-left truncate transition cursor-pointer"
+                >
+                  <span>${detailedLabelText}</span>
+                </button>
+                ${statusIconHtml}
+              </div>
+              ${detailedPanelHtml}
+            </div>
+          </div>
+
+          <!-- Einklappbare Persönliche Anmerkungen -->
+          ${personalNotesHtml}
+        </article>
+      `;
+    }
+
+    // =========================================================================
+    // 6. VIDEO MODAL (ANLEGEN, ÜBERSICHT BEARBEITEN & UNGESICHERTE ÄNDERUNGEN)
+    // =========================================================================
+    function getVideoFormSnapshot() {
+      return JSON.stringify({
+        categoryId: document.getElementById('input-category').value || '',
+        subtopics: [...state.modalSubtopics],
+        customSubtopic: (document.getElementById('input-subtopic-custom').value || '').trim(),
+        pro: document.getElementById('input-pro').value || '',
+        url: (document.getElementById('input-url').value || '').trim(),
+        title: (document.getElementById('input-title').value || '').trim(),
+        detailedAnalysis: (document.getElementById('input-detailed-analysis').value || '').trim(),
+        personalNotes: (document.getElementById('input-personal-notes').value || '').trim(),
+        tagField: (document.getElementById('input-tag-field').value || '').trim(),
+        tags: [...state.modalTags],
+        images: state.modalImages.map((img) => (typeof img === 'string' ? img : img.dataUrl))
+      });
+    }
+
+    function hasUnsavedVideoChanges() {
+      return getVideoFormSnapshot() !== state.initialVideoSnapshot;
+    }
+
+    function populateCategorySelect() {
+      const select = document.getElementById('input-category');
+      select.innerHTML = CATEGORIES.map(
+        (c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`
+      ).join('');
+    }
+
+    function renderSubtopicChecklist() {
+      const container = document.getElementById('input-subtopics-checklist');
+      if (!container) return;
+
+      const available = getAllSubtopics();
+      state.modalSubtopics.forEach((sel) => {
+        if (sel && !available.some((a) => a.toLowerCase() === sel.toLowerCase())) {
+          available.push(sel);
+        }
+      });
+
+      const sortedSubs = [...available].sort((a, b) => a.localeCompare(b, 'de'));
+
+      container.innerHTML = sortedSubs
+        .map((sub) => {
+          const checked = state.modalSubtopics.some(
+            (s) => s.toLowerCase() === sub.toLowerCase()
+          );
+          return `
+            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white text-xs text-slate-800 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                ${checked ? 'checked' : ''}
+                onchange="toggleModalSubtopicSelection('${escapeHtml(sub)}')"
+                class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+              />
+              <span class="font-medium truncate">${escapeHtml(sub)}</span>
+            </label>
+          `;
+        })
+        .join('');
+    }
+
+    window.toggleModalSubtopicSelection = function (subName) {
+      const clean = String(subName || '').trim();
+      if (!clean) return;
+      const idx = state.modalSubtopics.findIndex(
+        (s) => s.toLowerCase() === clean.toLowerCase()
+      );
+      if (idx !== -1) {
+        state.modalSubtopics.splice(idx, 1);
+      } else {
+        state.modalSubtopics.push(clean);
+      }
+      renderSubtopicChecklist();
+    };
+
+    window.addCustomSubtopicToSelection = function () {
+      const input = document.getElementById('input-subtopic-custom');
+      if (!input) return;
+      const clean = input.value.trim();
+      if (!clean) {
+        showToast('Bitte ein eigenes Sub-Topic eingeben.', 'error');
+        return;
+      }
+
+      if (!Array.isArray(state.subtopics)) {
+        state.subtopics = [];
+      }
+      const existingMaster = state.subtopics.find(
+        (s) => s.toLowerCase() === clean.toLowerCase()
+      );
+      const finalName = existingMaster || clean;
+      if (!existingMaster) {
+        state.subtopics.push(finalName);
+      }
+
+      if (!state.modalSubtopics.some((s) => s.toLowerCase() === finalName.toLowerCase())) {
+        state.modalSubtopics.push(finalName);
+      }
+
+      input.value = '';
+      renderSubtopicChecklist();
+    };
+
+    window.populateSubtopicSelect = function (selectedSubtopics = []) {
+      const list = Array.isArray(selectedSubtopics)
+        ? selectedSubtopics
+        : selectedSubtopics
+          ? [selectedSubtopics]
+          : [];
+      state.modalSubtopics = [...list];
+      const customInput = document.getElementById('input-subtopic-custom');
+      if (customInput) customInput.value = '';
+      renderSubtopicChecklist();
+    };
+
+    function populateProSelect(selectedPro = DEFAULT_PRO) {
+      const select = document.getElementById('input-pro');
+      const sortedPros = [...state.pros].sort((a, b) => {
+        if (a === DEFAULT_PRO) return -1;
+        if (b === DEFAULT_PRO) return 1;
+        return a.localeCompare(b, 'de');
+      });
+      select.innerHTML = sortedPros
+        .map(
+          (pro) =>
+            `<option value="${escapeHtml(pro)}" ${pro === selectedPro ? 'selected' : ''}>${escapeHtml(pro)}</option>`
+        )
+        .join('');
+    }
+
+    window.previewYoutubeUrl = function () {
+      const url = document.getElementById('input-url').value.trim();
+      const ytId = extractYouTubeId(url);
+      const box = document.getElementById('yt-preview-box');
+      const img = document.getElementById('yt-preview-img');
+
+      if (ytId) {
+        img.src = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+        box.classList.remove('hidden');
+      } else {
+        box.classList.add('hidden');
+      }
+    };
+
+    function compressImageFile(file, maxDim = 1000, quality = 0.78) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            let { width, height } = img;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve({
+              name: file.name || 'bild.jpg',
+              dataUrl: canvas.toDataURL('image/jpeg', quality)
+            });
+          };
+          img.onerror = reject;
+          img.src = ev.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    window.handleImageUpload = async function (event) {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        try {
+          const compressed = await compressImageFile(file);
+          state.modalImages.push(compressed);
+        } catch (err) {
+          showToast(`Bild „${file.name}“ konnte nicht geladen werden.`, 'error');
+        }
+      }
+      renderModalImages();
+      event.target.value = '';
+    };
+
+    window.removeModalImage = function (index) {
+      state.modalImages.splice(index, 1);
+      renderModalImages();
+    };
+
+    function renderModalImages() {
+      const container = document.getElementById('modal-images-list');
+      container.innerHTML = state.modalImages
+        .map((img, idx) => {
+          const src = typeof img === 'string' ? img : img.dataUrl;
+          const name = typeof img === 'string' ? `Bild ${idx + 1}` : img.name || `Bild ${idx + 1}`;
+          return `
+            <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group">
+              <img src="${src}" alt="${escapeHtml(name)}" class="w-full h-full object-cover" />
+              <button
+                type="button"
+                onclick="removeModalImage(${idx})"
+                title="Bild entfernen"
+                class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center shadow cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    function normalizeTag(raw) {
+      const cleaned = raw.trim().replace(/^#+/, '').replace(/\s+/g, '');
+      return cleaned ? `#${cleaned}` : '';
+    }
+
+    window.handleTagKeydown = function (e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const input = e.target;
+        const formatted = normalizeTag(input.value);
+        if (formatted && !state.modalTags.some((t) => t.toLowerCase() === formatted.toLowerCase())) {
+          state.modalTags.push(formatted);
+          renderModalTags();
+        }
+        input.value = '';
+      }
+    };
+
+    window.addSuggestedTag = function (tag) {
+      if (!state.modalTags.some((t) => t.toLowerCase() === tag.toLowerCase())) {
+        state.modalTags.push(tag);
+        renderModalTags();
+      }
+    };
+
+    window.removeModalTag = function (index) {
+      state.modalTags.splice(index, 1);
+      renderModalTags();
+    };
+
+    function renderModalTags() {
+      const container = document.getElementById('modal-tags-list');
+      container.innerHTML = state.modalTags
+        .map(
+          (tag, idx) => `
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-800 border border-indigo-200 text-xs font-semibold">
+            ${escapeHtml(tag)}
+            <button type="button" onclick="removeModalTag(${idx})" title="Tag von diesem Video entfernen" class="hover:text-red-700 font-bold ml-0.5 cursor-pointer">&times;</button>
+          </span>
+        `
+        )
+        .join('');
+    }
+
+    function renderSuggestedTags() {
+      const sortedTags = [...state.tags].sort((a, b) => a.localeCompare(b, 'de'));
+      const container = document.getElementById('suggested-tags-container');
+      if (sortedTags.length === 0) {
+        container.innerHTML = `<span class="text-[11px] text-slate-400">Keine Tags unter „Tags“ erfasst.</span>`;
+        return;
+      }
+      container.innerHTML =
+        `<span class="text-[11px] text-slate-400">Vorschläge:</span>` +
+        sortedTags
+          .map(
+            (t) =>
+              `<button type="button" onclick="addSuggestedTag('${escapeHtml(t)}')" class="text-[11px] px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer">${escapeHtml(t)}</button>`
+          )
+          .join('');
+    }
+
+    window.openVideoModal = function (preselectedCategoryId = null) {
+      resetPanelPosition('video-modal');
+      document.getElementById('edit-video-id').value = '';
+      document.getElementById('video-modal-title').textContent = 'Neues Video anlegen';
+      document.getElementById('video-form').reset();
+      document.getElementById('yt-preview-box').classList.add('hidden');
+
+      populateCategorySelect();
+      if (preselectedCategoryId) {
+        document.getElementById('input-category').value = preselectedCategoryId;
+      } else if (state.selectedCategory !== 'ALL') {
+        document.getElementById('input-category').value = state.selectedCategory;
+      }
+      populateSubtopicSelect([]);
+      populateProSelect(DEFAULT_PRO);
+
+      state.modalTags = [];
+      state.modalImages = [];
+      renderModalTags();
+      renderModalImages();
+      renderSuggestedTags();
+      state.initialVideoSnapshot = getVideoFormSnapshot();
+
+      const modal = document.getElementById('video-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.openEditVideoModal = function (videoId) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video) return;
+
+      resetPanelPosition('video-modal');
+      document.getElementById('edit-video-id').value = video.id;
+      document.getElementById('video-modal-title').textContent = 'Übersicht bearbeiten';
+
+      populateCategorySelect();
+      document.getElementById('input-category').value = video.categoryId;
+      populateSubtopicSelect(getVideoSubtopicsList(video));
+
+      populateProSelect(video.pro || DEFAULT_PRO);
+      document.getElementById('input-url').value = video.url || '';
+      document.getElementById('input-title').value = video.title || '';
+      document.getElementById('input-detailed-analysis').value = getCombinedDetailedText(video);
+      document.getElementById('input-personal-notes').value = video.personalNotes || '';
+      document.getElementById('input-tag-field').value = '';
+
+      state.modalTags = [...(video.tags || [])];
+      state.modalImages = Array.isArray(video.images) ? [...video.images] : [];
+      renderModalTags();
+      renderModalImages();
+      renderSuggestedTags();
+      previewYoutubeUrl();
+      state.initialVideoSnapshot = getVideoFormSnapshot();
+
+      const modal = document.getElementById('video-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeVideoModal = function () {
+      state.initialVideoSnapshot = '';
+      const modal = document.getElementById('video-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.requestCloseVideoModal = function () {
+      if (hasUnsavedVideoChanges()) {
+        openUnsavedChangesDialog(() => {
+          closeVideoModal();
+        });
+        return;
+      }
+      closeVideoModal();
+    };
+
+    window.saveVideo = async function (e) {
+      e.preventDefault();
+
+      const pendingTagInput = document.getElementById('input-tag-field');
+      if (pendingTagInput.value.trim()) {
+        pendingTagInput.value.split(',').forEach((part) => {
+          const formatted = normalizeTag(part);
+          if (formatted && !state.modalTags.some((t) => t.toLowerCase() === formatted.toLowerCase())) {
+            state.modalTags.push(formatted);
+          }
+        });
+      }
+
+      const editId = document.getElementById('edit-video-id').value;
+      const categoryId = document.getElementById('input-category').value;
+      const subtopicCustomVal = document.getElementById('input-subtopic-custom').value.trim();
+
+      const selectedSubtopics = [...state.modalSubtopics];
+      if (subtopicCustomVal) {
+        if (!selectedSubtopics.some((s) => s.toLowerCase() === subtopicCustomVal.toLowerCase())) {
+          selectedSubtopics.push(subtopicCustomVal);
+        }
+      }
+
+      if (selectedSubtopics.length === 0) {
+        showToast('Bitte mindestens ein Sub-Topic auswählen oder eintragen.', 'error');
+        return;
+      }
+
+      if (!Array.isArray(state.subtopics)) {
+        state.subtopics = [];
+      }
+      selectedSubtopics.forEach((sub) => {
+        if (!state.subtopics.some((s) => s.toLowerCase() === sub.toLowerCase())) {
+          state.subtopics.push(sub);
+        }
+      });
+
+      const subtopic = selectedSubtopics[0];
+      const pro = document.getElementById('input-pro').value;
+      const url = document.getElementById('input-url').value.trim();
+      const title = document.getElementById('input-title').value.trim();
+      if (!title) {
+        showToast('Bitte einen Video-Titel eingeben.', 'error');
+        document.getElementById('input-title').focus();
+        return;
+      }
+      const detailedAnalysis = document.getElementById('input-detailed-analysis').value.trim();
+      const personalNotes = document.getElementById('input-personal-notes').value.trim();
+      const images = [...state.modalImages];
+
+      const tags = [...state.modalTags];
+      tags.forEach((t) => {
+        if (!state.tags.some((existing) => existing.toLowerCase() === t.toLowerCase())) {
+          state.tags.push(t);
+        }
+      });
+
+      if (editId) {
+        const idx = state.videos.findIndex((v) => v.id === editId);
+        if (idx !== -1) {
+          state.videos[idx] = {
+            ...state.videos[idx],
+            categoryId,
+            subtopics: selectedSubtopics,
+            subtopic,
+            pro,
+            url,
+            title,
+            analysis: '',
+            detailedAnalysis,
+            personalNotes,
+            images,
+            tags
+          };
+          showToast('Übersicht gespeichert.');
+        }
+      } else {
+        const newVideo = {
+          id: 'vid-' + Date.now(),
+          categoryId,
+          subtopics: selectedSubtopics,
+          subtopic,
+          pro,
+          url,
+          title,
+          analysis: '',
+          detailedAnalysis,
+          personalNotes,
+          images,
+          tags,
+          pinned: false
+        };
+        state.videos.unshift(newVideo);
+        showToast('Neues Video gespeichert!');
+      }
+
+      closeVideoModal();
+      renderAll();
+      await pushStateToCloud();
+    };
+
+    // =========================================================================
+    // 7. LÖSCH- & UNGESICHERTE-ÄNDERUNGEN-DIALOG
+    // =========================================================================
+    let videoIdToDelete = null;
+    let pendingDiscardCallback = null;
+
+    function resetConfirmDialogDefault() {
+      pendingDiscardCallback = null;
+      document.getElementById('confirm-modal-title').textContent = 'Eintrag wirklich löschen?';
+      document.getElementById('confirm-modal-text').textContent = 'Dieser Vorgang kann nicht rückgängig gemacht werden.';
+      document.getElementById('confirm-modal-actions').innerHTML = `
+        <button type="button" onclick="closeConfirmModal()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs sm:text-sm font-medium text-slate-800 cursor-pointer">
+          Abbrechen
+        </button>
+        <button type="button" id="confirm-delete-btn" class="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs sm:text-sm font-semibold text-white cursor-pointer">
+          Löschen
+        </button>
+      `;
+      document.getElementById('confirm-delete-btn').addEventListener('click', handleConfirmDeleteClick);
+    }
+
+    async function handleConfirmDeleteClick() {
+      if (!videoIdToDelete) return;
+      state.videos = state.videos.filter((v) => v.id !== videoIdToDelete);
+      closeConfirmModal();
+      renderAll();
+      showToast('Eintrag wurde gelöscht.');
+      await pushStateToCloud();
+    }
+
+    function openUnsavedChangesDialog(onDiscard) {
+      videoIdToDelete = null;
+      pendingDiscardCallback = onDiscard;
+      resetPanelPosition('confirm-modal');
+      document.getElementById('confirm-modal-title').textContent = 'Ungesicherte Eingaben';
+      document.getElementById('confirm-modal-text').textContent =
+        'Es wurden Änderungen vorgenommen, die noch nicht gespeichert sind. Möchtest du die Eingaben verwerfen oder weiter bearbeiten und speichern?';
+      document.getElementById('confirm-modal-actions').innerHTML = `
+        <button type="button" onclick="closeConfirmModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs sm:text-sm font-semibold text-white cursor-pointer">
+          Weiter bearbeiten
+        </button>
+        <button type="button" onclick="confirmDiscardVideoChanges()" class="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs sm:text-sm font-semibold text-white cursor-pointer">
+          Eingaben verwerfen
+        </button>
+      `;
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    window.confirmDiscardVideoChanges = function () {
+      const cb = pendingDiscardCallback;
+      closeConfirmModal();
+      if (typeof cb === 'function') {
+        cb();
+      }
+    };
+
+    window.requestDeleteVideo = function (videoId) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video) return;
+      resetConfirmDialogDefault();
+      resetPanelPosition('confirm-modal');
+      videoIdToDelete = videoId;
+      document.getElementById('confirm-modal-text').textContent = `Möchtest du „${video.title}“ (${video.pro}) wirklich entfernen?`;
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeConfirmModal = function () {
+      videoIdToDelete = null;
+      pendingDiscardCallback = null;
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    resetConfirmDialogDefault();
+
+    // =========================================================================
+    // 8. SYNC-TRESOR MODAL & LINK-KOPIEREN
+    // =========================================================================
+    window.openSyncModal = function () {
+      resetPanelPosition('sync-modal');
+      document.getElementById('vault-code-input').value = state.vaultCode;
+      const shareUrl = `${window.location.origin}${window.location.pathname}?vault=${encodeURIComponent(state.vaultCode)}`;
+      document.getElementById('iphone-share-url').value = shareUrl;
+
+      const modal = document.getElementById('sync-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeSyncModal = function () {
+      const modal = document.getElementById('sync-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.changeVaultCode = function (e) {
+      e.preventDefault();
+      const raw = document.getElementById('vault-code-input').value.trim().toLowerCase();
+      const sanitized = raw.replace(/[^a-z0-9-_]/g, '');
+      if (!sanitized || sanitized.length < 4) {
+        showToast('Bitte mindestens 4 Zeichen (Buchstaben/Zahlen) eingeben.', 'error');
+        return;
+      }
+
+      state.vaultCode = sanitized;
+      localStorage.setItem(STORAGE_KEYS.VAULT, sanitized);
+
+      const newUrl = `${window.location.origin}${window.location.pathname}?vault=${encodeURIComponent(sanitized)}`;
+      window.history.replaceState({}, '', newUrl);
+      document.getElementById('iphone-share-url').value = newUrl;
+
+      subscribeToVault(sanitized);
+      showToast(`Mit Tresor „${sanitized}“ verbunden!`);
+    };
+
+    window.copyShareUrl = function () {
+      const input = document.getElementById('iphone-share-url');
+      input.select();
+      input.setSelectionRange(0, 99999);
+      document.execCommand('copy');
+      showToast('iPhone-Link in die Zwischenablage kopiert!');
+    };
+
+    // =========================================================================
+    // 9. PRO-MANAGER, SUBTOPIC-MANAGER & TAG-MANAGER MODALS (MIT BEARBEITEN)
+    // =========================================================================
+    function initSubtopicManagerDelegation() {
+      const container = document.getElementById('subtopic-manager-list');
+      if (!container || container.dataset.bound === 'true') return;
+      container.dataset.bound = 'true';
+
+      container.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const idx = Number(btn.dataset.index);
+        const subs = [...getAllSubtopics()].sort((a, b) => a.localeCompare(b, 'de'));
+        const targetName = Number.isInteger(idx) && subs[idx] ? subs[idx] : '';
+
+        if (action === 'edit' && targetName) {
+          state.editingSubtopicName = targetName;
+          renderSubtopicManagerList();
+          const editInput = document.getElementById('edit-subtopic-inline-input');
+          if (editInput) {
+            editInput.focus();
+            editInput.select();
+          }
+        } else if (action === 'cancel') {
+          state.editingSubtopicName = '';
+          renderSubtopicManagerList();
+        } else if (action === 'save') {
+          const oldName = state.editingSubtopicName;
+          const input = document.getElementById('edit-subtopic-inline-input');
+          if (!input || !oldName) return;
+          const newName = input.value.trim();
+          if (!newName) {
+            showToast('Bitte einen Sub-Topic-Namen eingeben.', 'error');
+            return;
+          }
+
+          const duplicate = state.subtopics.some(
+            (s) => s.toLowerCase() === newName.toLowerCase() && s.toLowerCase() !== oldName.toLowerCase()
+          );
+          if (duplicate) {
+            showToast('Dieses Sub-Topic existiert bereits.', 'error');
+            return;
+          }
+
+          const listIdx = state.subtopics.findIndex((s) => s.toLowerCase() === oldName.toLowerCase());
+          if (listIdx !== -1) {
+            state.subtopics[listIdx] = newName;
+          } else {
+            state.subtopics.push(newName);
+          }
+
+          state.videos.forEach((v) => {
+            const list = getVideoSubtopicsList(v).map((s) =>
+              s.toLowerCase() === oldName.toLowerCase() ? newName : s
+            );
+            v.subtopics = list;
+            v.subtopic = list[0] || '';
+          });
+
+          if (state.selectedSubtopic.toLowerCase() === oldName.toLowerCase()) {
+            state.selectedSubtopic = newName;
+          }
+
+          state.editingSubtopicName = '';
+          saveLocalFallback();
+          renderSubtopicManagerList();
+          renderBoard();
+          showToast(`Sub-Topic zu „${newName}“ geändert.`);
+          await pushStateToCloud();
+        } else if (action === 'delete' && targetName) {
+          state.subtopics = state.subtopics.filter(
+            (s) => s.toLowerCase() !== targetName.toLowerCase()
+          );
+          state.videos.forEach((v) => {
+            const list = getVideoSubtopicsList(v).filter(
+              (s) => s.toLowerCase() !== targetName.toLowerCase()
+            );
+            v.subtopics = list;
+            v.subtopic = list[0] || '';
+          });
+          if (state.selectedSubtopic.toLowerCase() === targetName.toLowerCase()) {
+            state.selectedSubtopic = '';
+          }
+          if (state.editingSubtopicName.toLowerCase() === targetName.toLowerCase()) {
+            state.editingSubtopicName = '';
+          }
+          saveLocalFallback();
+          renderSubtopicManagerList();
+          renderBoard();
+          showToast(`Sub-Topic „${targetName}“ entfernt.`);
+          await pushStateToCloud();
+        }
+      });
+
+      container.addEventListener('keydown', async (e) => {
+        if (e.target.id !== 'edit-subtopic-inline-input') return;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const saveBtn = container.querySelector('button[data-action="save"]');
+          if (saveBtn) saveBtn.click();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          state.editingSubtopicName = '';
+          renderSubtopicManagerList();
+        }
+      });
+    }
+
+    window.openSubtopicModal = function () {
+      resetPanelPosition('subtopic-modal');
+      initSubtopicManagerDelegation();
+      state.editingSubtopicName = '';
+      renderSubtopicManagerList();
+      const modal = document.getElementById('subtopic-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      document.getElementById('manager-subtopic-input').focus();
+    };
+
+    window.closeSubtopicModal = function () {
+      state.editingSubtopicName = '';
+      const modal = document.getElementById('subtopic-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.renderSubtopicManagerList = function () {
+      initSubtopicManagerDelegation();
+      const container = document.getElementById('subtopic-manager-list');
+      const subs = [...getAllSubtopics()].sort((a, b) => a.localeCompare(b, 'de'));
+
+      if (subs.length === 0) {
+        container.innerHTML = `<div class="px-3.5 py-3 text-xs text-slate-500">Noch keine Sub-Topics erfasst.</div>`;
+        return;
+      }
+
+      container.innerHTML = subs
+        .map((sub, idx) => {
+          const count = state.videos.filter((v) =>
+            getVideoSubtopicsList(v).some((s) => s.toLowerCase() === sub.toLowerCase())
+          ).length;
+
+          if (state.editingSubtopicName.toLowerCase() === sub.toLowerCase()) {
+            return `
+              <div class="px-3 py-2 flex items-center gap-1.5 bg-emerald-50/70">
+                <input
+                  id="edit-subtopic-inline-input"
+                  type="text"
+                  value="${escapeHtml(sub)}"
+                  class="flex-1 min-w-0 px-2.5 py-1 rounded-lg bg-white border border-emerald-400 text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  data-action="save"
+                  data-index="${idx}"
+                  class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer shrink-0"
+                >
+                  OK
+                </button>
+                <button
+                  type="button"
+                  data-action="cancel"
+                  data-index="${idx}"
+                  class="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium cursor-pointer shrink-0"
+                >
+                  Abbruch
+                </button>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="px-3.5 py-2 flex items-center justify-between gap-2 text-xs sm:text-sm">
+              <div class="min-w-0 truncate">
+                <span class="font-semibold text-slate-900">${escapeHtml(sub)}</span>
+                <span class="ml-1.5 text-xs text-slate-500">(${count} ${count === 1 ? 'Video' : 'Videos'})</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  data-action="edit"
+                  data-index="${idx}"
+                  class="text-xs font-medium text-emerald-700 hover:text-emerald-900 px-2 py-1 rounded hover:bg-emerald-50 transition cursor-pointer"
+                  title="Sub-Topic bearbeiten"
+                >
+                  Bearbeiten
+                </button>
+                <button
+                  type="button"
+                  data-action="delete"
+                  data-index="${idx}"
+                  class="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
+                  title="Sub-Topic entfernen"
+                >
+                  Entfernen
+                </button>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    };
+
+    window.addSubtopicFromManager = async function (e) {
+      e.preventDefault();
+      const input = document.getElementById('manager-subtopic-input');
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (!Array.isArray(state.subtopics)) {
+        state.subtopics = [];
+      }
+      if (state.subtopics.some((s) => s.toLowerCase() === name.toLowerCase())) {
+        showToast('Dieses Sub-Topic existiert bereits.', 'error');
+        return;
+      }
+
+      state.subtopics.push(name);
+      input.value = '';
+      saveLocalFallback();
+      renderSubtopicManagerList();
+      showToast(`Sub-Topic „${name}“ gespeichert.`);
+      await pushStateToCloud();
+    };
+
+    function initProManagerDelegation() {
+      const container = document.getElementById('pro-manager-list');
+      if (!container || container.dataset.bound === 'true') return;
+      container.dataset.bound = 'true';
+
+      container.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const idx = Number(btn.dataset.index);
+        const sorted = [...state.pros].sort((a, b) => a.localeCompare(b, 'de'));
+        const targetPro = Number.isInteger(idx) && sorted[idx] ? sorted[idx] : '';
+
+        if (action === 'edit' && targetPro) {
+          state.editingProName = targetPro;
+          renderProManagerList();
+          const editInput = document.getElementById('edit-pro-inline-input');
+          if (editInput) {
+            editInput.focus();
+            editInput.select();
+          }
+        } else if (action === 'cancel') {
+          state.editingProName = '';
+          renderProManagerList();
+        } else if (action === 'save') {
+          const oldName = state.editingProName;
+          const input = document.getElementById('edit-pro-inline-input');
+          if (!input || !oldName) return;
+          const newName = input.value.trim();
+          if (!newName) {
+            showToast('Bitte einen Pro-Namen eingeben.', 'error');
+            return;
+          }
+
+          const duplicate = state.pros.some(
+            (p) => p.toLowerCase() === newName.toLowerCase() && p.toLowerCase() !== oldName.toLowerCase()
+          );
+          if (duplicate) {
+            showToast('Dieser Pro existiert bereits in der Liste.', 'error');
+            return;
+          }
+
+          const proIdx = state.pros.findIndex((p) => p.toLowerCase() === oldName.toLowerCase());
+          if (proIdx !== -1) {
+            state.pros[proIdx] = newName;
+          } else {
+            state.pros.push(newName);
+          }
+
+          state.videos.forEach((v) => {
+            if ((v.pro || '').toLowerCase() === oldName.toLowerCase()) {
+              v.pro = newName;
+            }
+          });
+
+          const searchInput = document.getElementById('search-input');
+          if (state.searchQuery.toLowerCase() === oldName.toLowerCase()) {
+            state.searchQuery = newName;
+            if (searchInput) searchInput.value = newName;
+          }
+
+          state.editingProName = '';
+          renderProManagerList();
+          renderQuickChipsBar();
+          renderBoard();
+          showToast(`Pro zu „${newName}“ geändert.`);
+          await pushStateToCloud();
+        } else if (action === 'delete' && targetPro) {
+          state.pros = state.pros.filter((p) => p !== targetPro);
+          if (state.editingProName.toLowerCase() === targetPro.toLowerCase()) {
+            state.editingProName = '';
+          }
+          renderProManagerList();
+          renderQuickChipsBar();
+          showToast(`Pro „${targetPro}“ entfernt.`);
+          await pushStateToCloud();
+        }
+      });
+
+      container.addEventListener('keydown', async (e) => {
+        if (e.target.id !== 'edit-pro-inline-input') return;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const saveBtn = container.querySelector('button[data-action="save"]');
+          if (saveBtn) saveBtn.click();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          state.editingProName = '';
+          renderProManagerList();
+        }
+      });
+    }
+
+    window.openProModal = function () {
+      resetPanelPosition('pro-modal');
+      initProManagerDelegation();
+      state.editingProName = '';
+      renderProManagerList();
+      const modal = document.getElementById('pro-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeProModal = function () {
+      state.editingProName = '';
+      const modal = document.getElementById('pro-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    function renderProManagerList() {
+      initProManagerDelegation();
+      const container = document.getElementById('pro-manager-list');
+      const sorted = [...state.pros].sort((a, b) => a.localeCompare(b, 'de'));
+
+      container.innerHTML = sorted
+        .map((pro, idx) => {
+          const count = state.videos.filter((v) => v.pro === pro).length;
+
+          if (state.editingProName.toLowerCase() === pro.toLowerCase()) {
+            return `
+              <div class="px-3 py-2 flex items-center gap-1.5 bg-amber-50/80">
+                <input
+                  id="edit-pro-inline-input"
+                  type="text"
+                  value="${escapeHtml(pro)}"
+                  class="flex-1 min-w-0 px-2.5 py-1 rounded-lg bg-white border border-amber-400 text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  data-action="save"
+                  data-index="${idx}"
+                  class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer shrink-0"
+                >
+                  OK
+                </button>
+                <button
+                  type="button"
+                  data-action="cancel"
+                  data-index="${idx}"
+                  class="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium cursor-pointer shrink-0"
+                >
+                  Abbruch
+                </button>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="px-3.5 py-2 flex items-center justify-between gap-2 text-xs sm:text-sm">
+              <div class="min-w-0 truncate">
+                <span class="font-semibold text-slate-900">${escapeHtml(pro)}</span>
+                <span class="ml-1.5 text-xs text-slate-500">(${count} ${count === 1 ? 'Video' : 'Videos'})</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  data-action="edit"
+                  data-index="${idx}"
+                  class="text-xs font-medium text-amber-800 hover:text-amber-950 px-2 py-1 rounded hover:bg-amber-100/70 transition cursor-pointer"
+                  title="Pro bearbeiten"
+                >
+                  Bearbeiten
+                </button>
+                <button
+                  type="button"
+                  data-action="delete"
+                  data-index="${idx}"
+                  class="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
+                  title="Aus Dropdown entfernen"
+                >
+                  Entfernen
+                </button>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    window.addProFromManager = async function (e) {
+      e.preventDefault();
+      const input = document.getElementById('manager-pro-input');
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (state.pros.some((p) => p.toLowerCase() === name.toLowerCase())) {
+        showToast('Dieser Pro existiert bereits in der Liste.', 'error');
+        return;
+      }
+
+      state.pros.push(name);
+      input.value = '';
+      renderProManagerList();
+      renderQuickChipsBar();
+      showToast(`Pro „${name}“ gespeichert.`);
+      await pushStateToCloud();
+    };
+
+    window.deletePro = async function (proName) {
+      state.pros = state.pros.filter((p) => p !== proName);
+      renderProManagerList();
+      renderQuickChipsBar();
+      showToast(`Pro „${proName}“ entfernt.`);
+      await pushStateToCloud();
+    };
+
+    function initTagManagerDelegation() {
+      const container = document.getElementById('tag-manager-list');
+      if (!container || container.dataset.bound === 'true') return;
+      container.dataset.bound = 'true';
+
+      container.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const idx = Number(btn.dataset.index);
+        const sorted = [...state.tags].sort((a, b) => a.localeCompare(b, 'de'));
+        const targetTag = Number.isInteger(idx) && sorted[idx] ? sorted[idx] : '';
+
+        if (action === 'edit' && targetTag) {
+          state.editingTagName = targetTag;
+          renderTagManagerList();
+          const editInput = document.getElementById('edit-tag-inline-input');
+          if (editInput) {
+            editInput.focus();
+            editInput.select();
+          }
+        } else if (action === 'cancel') {
+          state.editingTagName = '';
+          renderTagManagerList();
+        } else if (action === 'save') {
+          const oldTag = state.editingTagName;
+          const input = document.getElementById('edit-tag-inline-input');
+          if (!input || !oldTag) return;
+          const formatted = normalizeTag(input.value);
+          if (!formatted) {
+            showToast('Bitte einen gültigen Tag eingeben.', 'error');
+            return;
+          }
+
+          const duplicate = state.tags.some(
+            (t) => t.toLowerCase() === formatted.toLowerCase() && t.toLowerCase() !== oldTag.toLowerCase()
+          );
+          if (duplicate) {
+            showToast('Dieser Tag existiert bereits in der Liste.', 'error');
+            return;
+          }
+
+          const listIdx = state.tags.findIndex((t) => t.toLowerCase() === oldTag.toLowerCase());
+          if (listIdx !== -1) {
+            state.tags[listIdx] = formatted;
+          } else {
+            state.tags.push(formatted);
+          }
+
+          state.videos.forEach((v) => {
+            if (Array.isArray(v.tags)) {
+              v.tags = v.tags.map((vt) => (vt.toLowerCase() === oldTag.toLowerCase() ? formatted : vt));
+            }
+          });
+
+          if (state.activeTagFilter.toLowerCase() === oldTag.toLowerCase()) {
+            state.activeTagFilter = formatted;
+          }
+
+          state.editingTagName = '';
+          renderTagManagerList();
+          renderQuickChipsBar();
+          renderSuggestedTags();
+          renderBoard();
+          showToast(`Tag zu „${formatted}“ geändert.`);
+          await pushStateToCloud();
+        } else if (action === 'delete' && targetTag) {
+          state.tags = state.tags.filter((t) => t !== targetTag);
+          state.videos.forEach((v) => {
+            if (Array.isArray(v.tags)) {
+              v.tags = v.tags.filter((vt) => vt.toLowerCase() !== targetTag.toLowerCase());
+            }
+          });
+          if (state.activeTagFilter.toLowerCase() === targetTag.toLowerCase()) {
+            state.activeTagFilter = '';
+          }
+          if (state.editingTagName.toLowerCase() === targetTag.toLowerCase()) {
+            state.editingTagName = '';
+          }
+          renderTagManagerList();
+          renderQuickChipsBar();
+          renderSuggestedTags();
+          renderBoard();
+          showToast(`Tag „${targetTag}“ entfernt.`);
+          await pushStateToCloud();
+        }
+      });
+
+      container.addEventListener('keydown', async (e) => {
+        if (e.target.id !== 'edit-tag-inline-input') return;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const saveBtn = container.querySelector('button[data-action="save"]');
+          if (saveBtn) saveBtn.click();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          state.editingTagName = '';
+          renderTagManagerList();
+        }
+      });
+    }
+
+    window.openTagModal = function () {
+      resetPanelPosition('tag-modal');
+      initTagManagerDelegation();
+      state.editingTagName = '';
+      renderTagManagerList();
+      const modal = document.getElementById('tag-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      document.getElementById('manager-tag-input').focus();
+    };
+
+    window.closeTagModal = function () {
+      state.editingTagName = '';
+      const modal = document.getElementById('tag-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    function renderTagManagerList() {
+      initTagManagerDelegation();
+      const container = document.getElementById('tag-manager-list');
+      const sorted = [...state.tags].sort((a, b) => a.localeCompare(b, 'de'));
+
+      if (sorted.length === 0) {
+        container.innerHTML = `<div class="px-3.5 py-3 text-xs text-slate-500">Noch keine separaten Tags angelegt.</div>`;
+        return;
+      }
+
+      container.innerHTML = sorted
+        .map((tag, idx) => {
+          const count = state.videos.filter((v) =>
+            (v.tags || []).some((vt) => vt.toLowerCase() === tag.toLowerCase())
+          ).length;
+
+          if (state.editingTagName.toLowerCase() === tag.toLowerCase()) {
+            return `
+              <div class="px-3 py-2 flex items-center gap-1.5 bg-indigo-50/70">
+                <input
+                  id="edit-tag-inline-input"
+                  type="text"
+                  value="${escapeHtml(tag)}"
+                  class="flex-1 min-w-0 px-2.5 py-1 rounded-lg bg-white border border-indigo-400 text-xs sm:text-sm font-semibold text-indigo-900 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  data-action="save"
+                  data-index="${idx}"
+                  class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold cursor-pointer shrink-0"
+                >
+                  OK
+                </button>
+                <button
+                  type="button"
+                  data-action="cancel"
+                  data-index="${idx}"
+                  class="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium cursor-pointer shrink-0"
+                >
+                  Abbruch
+                </button>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="px-3.5 py-2 flex items-center justify-between gap-2 text-xs sm:text-sm">
+              <div class="min-w-0 truncate">
+                <span class="font-semibold text-indigo-800">${escapeHtml(tag)}</span>
+                <span class="ml-1.5 text-xs text-slate-500">(${count} ${count === 1 ? 'Video' : 'Videos'})</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  data-action="edit"
+                  data-index="${idx}"
+                  class="text-xs font-medium text-indigo-700 hover:text-indigo-950 px-2 py-1 rounded hover:bg-indigo-50 transition cursor-pointer"
+                  title="Tag bearbeiten"
+                >
+                  Bearbeiten
+                </button>
+                <button
+                  type="button"
+                  data-action="delete"
+                  data-index="${idx}"
+                  class="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
+                  title="Tag entfernen"
+                >
+                  Entfernen
+                </button>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    window.addTagFromManager = async function (e) {
+      e.preventDefault();
+      const input = document.getElementById('manager-tag-input');
+      const formatted = normalizeTag(input.value);
+      if (!formatted) return;
+
+      if (state.tags.some((t) => t.toLowerCase() === formatted.toLowerCase())) {
+        showToast('Dieser Tag existiert bereits in der Liste.', 'error');
+        return;
+      }
+
+      state.tags.push(formatted);
+      input.value = '';
+      renderTagManagerList();
+      renderQuickChipsBar();
+      renderSuggestedTags();
+      showToast(`Tag „${formatted}“ gespeichert.`);
+      await pushStateToCloud();
+    };
+
+    // =========================================================================
+    // 10. YOUTUBE PLAYER MODAL (MIT TIMESTAMP-SPRUNGMARKE)
+    // =========================================================================
+    window.openPlayerModal = function (videoId, startSeconds = 0) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video) return;
+
+      const ytId = extractYouTubeId(video.url);
+      if (!ytId) {
+        window.open(video.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      resetPanelPosition('player-modal');
+      const sec = Math.max(0, parseInt(startSeconds, 10) || 0);
+      const mins = Math.floor(sec / 60);
+      const rem = sec % 60;
+      const timeLabel = sec > 0 ? ` • Sprungmarke ${mins}:${String(rem).padStart(2, '0')}` : '';
+      const subLabel = getVideoSubtopicsList(video).join(', ');
+
+      document.getElementById('player-modal-pro').textContent = `${video.pro}${subLabel ? ` • ${subLabel}` : ''}${timeLabel}`;
+      document.getElementById('player-modal-title').textContent = video.title;
+      document.getElementById('player-external-link').href =
+        sec > 0 ? `${video.url}${video.url.includes('?') ? '&' : '?'}t=${sec}s` : video.url;
+      document.getElementById('player-iframe').src =
+        `https://www.youtube.com/embed/${ytId}?autoplay=1${sec > 0 ? `&start=${sec}` : ''}`;
+
+      const modal = document.getElementById('player-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.openPlayerAtTimestamp = function (videoId, seconds) {
+      window.openPlayerModal(videoId, seconds);
+    };
+
+    window.closePlayerModal = function () {
+      document.getElementById('player-iframe').src = '';
+      const modal = document.getElementById('player-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    // =========================================================================
+    // 11. JSON BACKUP EXPORT & IMPORT
+    // =========================================================================
+    window.exportData = function () {
+      const payload = {
+        app: 'GOLF MASTER',
+        vaultCode: state.vaultCode,
+        exportedAt: new Date().toISOString(),
+        pros: state.pros,
+        tags: state.tags,
+        subtopics: state.subtopics,
+        videos: state.videos
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `golf-master-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Backup erfolgreich als JSON heruntergeladen.');
+    };
+
+    window.importData = function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (Array.isArray(parsed.videos)) {
+            state.videos = parsed.videos;
+            if (Array.isArray(parsed.pros)) {
+              state.pros = parsed.pros;
+            }
+            if (Array.isArray(parsed.tags)) {
+              state.tags = parsed.tags;
+            }
+            if (Array.isArray(parsed.subtopics)) {
+              state.subtopics = normalizeSubtopicsList(parsed.subtopics);
+            } else if (parsed.subtopicsByCategory) {
+              state.subtopics = normalizeSubtopicsList(null, parsed.subtopicsByCategory);
+            }
+            renderAll();
+            await pushStateToCloud();
+            showToast('Backup erfolgreich importiert!');
+          } else {
+            showToast('Ungültiges Backup-Format.', 'error');
+          }
+        } catch (err) {
+          showToast('Datei konnte nicht gelesen werden.', 'error');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    };
+
+    // =========================================================================
+    // 12. INITIALISIERUNG
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      initDraggableModals();
+      enableDragToScroll('category-filter-bar');
+      enableDragToScroll('pro-chips-bar');
+      enableDragToScroll('tag-chips-bar');
+      initProManagerDelegation();
+      initSubtopicManagerDelegation();
+      initTagManagerDelegation();
+      initFirebaseSync();
+    });
+  </script>
+</body>
+</html>
