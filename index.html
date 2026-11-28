@@ -1112,6 +1112,7 @@
       expandedDetailedIds: {},
       expandedNotesIds: {},
       editingCardDetailedId: null,
+      editingCardNotesId: null,
       editingProName: '',
       editingSubtopicName: '',
       editingTagName: '',
@@ -1943,7 +1944,38 @@
 
     window.toggleCardNotes = function (videoId) {
       state.expandedNotesIds[videoId] = !state.expandedNotesIds[videoId];
+      if (!state.expandedNotesIds[videoId] && state.editingCardNotesId === videoId) {
+        state.editingCardNotesId = null;
+      }
       renderBoard();
+    };
+
+    window.startCardNotesEdit = function (videoId) {
+      state.expandedNotesIds[videoId] = true;
+      state.editingCardNotesId = videoId;
+      renderBoard();
+      const ta = document.getElementById(`card-notes-textarea-${videoId}`);
+      if (ta) ta.focus();
+    };
+
+    window.cancelCardNotesEdit = function () {
+      state.editingCardNotesId = null;
+      renderBoard();
+    };
+
+    window.saveCardNotesEdit = async function (videoId) {
+      const video = state.videos.find((v) => v.id === videoId);
+      if (!video) return;
+      const ta = document.getElementById(`card-notes-textarea-${videoId}`);
+      if (!ta) return;
+      video.personalNotes = ta.value.trim();
+      state.editingCardNotesId = null;
+      if (video.personalNotes) {
+        state.expandedNotesIds[videoId] = true;
+      }
+      renderBoard();
+      showToast('Anmerkungen gespeichert.');
+      await pushStateToCloud();
     };
 
     window.startCardDetailedEdit = function (videoId) {
@@ -2173,7 +2205,55 @@
       }
 
       const personalNotesText = (video.personalNotes || '').trim();
-      const isNotesExpanded = !!state.expandedNotesIds[video.id];
+      const isNotesExpanded = !!state.expandedNotesIds[video.id] || state.editingCardNotesId === video.id;
+      const isEditingCardNotes = state.editingCardNotesId === video.id && !state.readOnlyMode;
+
+      let notesBodyHtml = '';
+      if (isNotesExpanded) {
+        if (isEditingCardNotes) {
+          notesBodyHtml = `<div class="mt-1.5 p-2 rounded-lg bg-amber-50/90 border border-amber-300 space-y-1.5">
+            <textarea
+              id="card-notes-textarea-${video.id}"
+              rows="3"
+              placeholder="Persönliche Anmerkungen &amp; Time-Stamps..."
+              class="w-full p-1.5 rounded-md bg-white border border-amber-300 text-[11px] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500 leading-snug"
+            >${escapeHtml(personalNotesText)}</textarea>
+            <div class="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onclick="cancelCardNotesEdit()"
+                class="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 text-[10px] font-semibold cursor-pointer"
+              >
+                Abbruch
+              </button>
+              <button
+                type="button"
+                onclick="saveCardNotesEdit('${video.id}')"
+                class="px-2.5 py-0.5 rounded bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-semibold cursor-pointer"
+              >
+                Speichern
+              </button>
+            </div>
+          </div>`;
+        } else {
+          const editNotesInlineBtn = state.readOnlyMode
+            ? ''
+            : `<div class="mt-1.5 flex justify-end">
+                <button
+                  type="button"
+                  onclick="startCardNotesEdit('${video.id}')"
+                  class="text-[10px] font-bold text-amber-900 hover:underline cursor-pointer"
+                >
+                  Bearbeiten
+                </button>
+              </div>`;
+          notesBodyHtml = `<div class="mt-1.5 p-2 rounded-lg bg-amber-50/80 border border-amber-200 text-[11px] text-slate-700 leading-snug max-h-32 overflow-y-auto">
+            ${formatAnalysisText(personalNotesText, video.id)}
+            ${editNotesInlineBtn}
+          </div>`;
+        }
+      }
+
       const personalNotesHtml = personalNotesText
         ? `<div class="px-2.5 pt-1.5 pb-2.5 mt-1.5 border-t border-amber-200/80">
             <button
@@ -2184,13 +2264,7 @@
               <span>Anmerkungen</span>
               <span class="text-[9px]">${isNotesExpanded ? '▲' : '▼'}</span>
             </button>
-            ${
-              isNotesExpanded
-                ? `<div class="mt-1.5 p-2 rounded-lg bg-amber-50/80 border border-amber-200 text-[11px] text-slate-700 leading-snug max-h-32 overflow-y-auto">
-                    ${formatAnalysisText(personalNotesText, video.id)}
-                  </div>`
-                : ''
-            }
+            ${notesBodyHtml}
           </div>`
         : '<div class="pb-1.5"></div>';
 
